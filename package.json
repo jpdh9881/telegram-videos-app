@@ -9,6 +9,9 @@
       "typescript": "4.5.2"
    },
    "dependencies": {
+      "dotenv": "^16.3.1",
+      "fastify": "^4.24.3",
+      "input": "^1.0.1",
       "mysql": "^2.14.1",
       "reflect-metadata": "^0.1.13",
       "telegram": "^2.19.8",
@@ -16,6 +19,11 @@
    },
    "scripts": {
       "start": "ts-node src/index.ts",
-      "typeorm": "typeorm-ts-node-esm"
+      "typeorm": "typeorm-ts-node-esm",
+      "scrape": "ts-node src/index.ts -routine scrape --new",
+      "scrape_all": "ts-node src/index.ts -routine scrape --all",
+      "hash": "ts-node src/index.ts -routine hash --tg_sha",
+      "update": "ts-node src/index.ts",
+      "migrate": "npx typeorm-ts-node-esm migration:run --dataSource './build/data-source.js'"
    }
 }

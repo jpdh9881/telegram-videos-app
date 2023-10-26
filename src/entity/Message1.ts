@@ -1,23 +1,11 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToOne, JoinColumn } from "typeorm"
-import { Channel } from "./Channel";
-import { Document } from "./Document";
 
 @Entity()
-export class Message {
+export class Message1 {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => Channel, (channel) => channel.id)
-    @JoinColumn()
     @Column({ type: "int", nullable: false })
-    channel_id: number;
-
-    @OneToOne(() => Document)
-    @JoinColumn()
-    @Column({ type: "int", nullable: false })
-    document_id: number;
-
-    @Column({ type: "bigint", nullable: false })
     tg_id: number;
 
     @Column({ type: "int", nullable: false })
@@ -30,8 +18,19 @@ export class Message {
     tg_message: string;
 
     @Column({ type: "json", nullable: false })
-    raw: Object;
+    raw: string;
 
+    // Relations
+    // @ManyToOne(() => Channel1, (channel) => channel.messages, { nullable: true })
+    // @JoinColumn({ name: "channel_id" })
+    // channel: Channel1;
+    @Column()
+    channel_id: number;
+
+    // @OneToOne(() => Document1)
+    // document: Document1;
+
+    // Auditable
     @CreateDateColumn()
     created_at: Date;
 
