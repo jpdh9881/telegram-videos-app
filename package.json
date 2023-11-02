@@ -2,17 +2,19 @@
    "name": "telegram-videos-app",
    "version": "0.0.1",
    "description": "Awesome project developed with TypeORM.",
-   "type": "commonjs",
    "devDependencies": {
       "@types/node": "^16.11.10",
       "ts-node": "^10.7.0",
       "typescript": "4.5.2"
    },
    "dependencies": {
+      "axios": "^1.6.0",
+      "cron": "^3.1.6",
       "dotenv": "^16.3.1",
       "fastify": "^4.24.3",
       "input": "^1.0.1",
       "mysql": "^2.14.1",
+      "node-fetch": "^3.3.2",
       "reflect-metadata": "^0.1.13",
       "telegram": "^2.19.8",
       "typeorm": "0.3.17"
@@ -20,10 +22,9 @@
    "scripts": {
       "start": "ts-node src/index.ts",
       "typeorm": "typeorm-ts-node-esm",
-      "scrape": "ts-node src/index.ts -routine scrape --new",
-      "scrape_all": "ts-node src/index.ts -routine scrape --all",
-      "hash": "ts-node src/index.ts -routine hash --tg_sha",
-      "update": "ts-node src/index.ts",
-      "migrate": "npx typeorm-ts-node-esm migration:run --dataSource './build/data-source.js'"
+      "scrape-hash": "ts-node src/index.ts -routine scrape-hash",
+      "sync": "ts-node src/index.ts -routine sync",
+      "migrate": "npx typeorm-ts-node-esm migration:run --dataSource './build/data-source.js'",
+      "testfile": "ts-node src/test.ts"
    }
 }

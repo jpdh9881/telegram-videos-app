@@ -1,3 +1,4 @@
+import { Api } from "telegram";
 import { AppDataSource } from "../data-source";
 import { Document1 } from "../entity/Document1";
 import { Hash1 } from "../entity/Hash1";
@@ -35,6 +36,14 @@ const saveHash = async (documentId: number, tgSha256: string): Promise<boolean> 
   return Promise.resolve(isNewHash);
 };
 
+const joinTgHashes = (hashes: Api.FileHash[]): string => {
+  hashes.sort((a, b) => a.offset.valueOf() - b.offset.valueOf());
+  const json = hashes.map(hash => hash.hash.toJSON().data);
+  const joined = json.join(";");
+  return joined;
+};
+
 export default {
   saveHash,
+  joinTgHashes,
 };

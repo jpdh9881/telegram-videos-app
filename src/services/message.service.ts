@@ -3,8 +3,9 @@ import { AppDataSource } from "../data-source";
 import { Message1 } from "../entity/Message1";
 import { Document1 } from "../entity/Document1";
 import { ProcessedStatus1 } from "../entity/ProcessedStatus1";
-import { MessageLog1 } from "../entity/MessageLog1";
+import { JobLog1 } from "../entity/JobLog1";
 import { Channel1 } from "../entity/Channel1";
+import { Hash1 } from "../entity/Hash1";
 
 export interface MessagesWithoutHashes { message_id: number; message_tg_id: number; document_id: number; channel_id: number; channel_name: string; }
 const getMessagesWithoutHashes = async (): Promise<MessagesWithoutHashes[]> => {
@@ -35,6 +36,72 @@ const getMessagesByDate = async (from: number, to?: number): Promise<any[]> => {
     .where("ps.tg_sha256 = 1")
     .andWhere("(document.tg_date * 1000) >= :from and (document.tg_date * 1000) <= :to", { from, to } )
     .getRawMany();
+};
+
+export interface SaveMessageAndHashResult { message: Message1, document: Document1, hash: Hash1, processedStatus: ProcessedStatus1 }
+const saveMessageAndHash = async (channelId: number, message: Api.Message, hashStr: string): Promise<SaveMessageAndHashResult> => {
+  let result: SaveMessageAndHashResult = {
+    message: null,
+    document: null,
+    hash: null,
+    processedStatus: null,
+  };
+  await AppDataSource.transaction(async transactionEntityManager => {
+    const media = message.media as Api.MessageMediaDocument;
+    const document = media.document as Api.Document;
+    const attributeA = (document.attributes as any).find(a => a.duration);
+    const attributeB = (document.attributes as any).find(a => a.fileName);
+
+    // Message
+    const m = new Message1();
+    m.tg_id = message.id;
+    m.tg_date = message.date;
+    m.tg_edit_date = message.editDate;
+    m.tg_message = message.message;
+    m.channel_id = channelId;
+    m.raw = JSON.stringify(message);
+    await transactionEntityManager.save(m);
+    result.message = m;
+
+    // Hash
+    const hashResult = await transactionEntityManager.upsert(
+      Hash1,
+      [{ tg_sha256: hashStr, tg_sha256_date: new Date(), }],
+      [ "tg_sha256" ],
+    );
+    const h = new Hash1();
+    h.id = hashResult.identifiers[0].id;
+    h.tg_sha256 = hashStr;
+    h.tg_sha256_date = hashResult.generatedMaps[0].tg_sha256_date;
+    h.created_at = hashResult.generatedMaps[0].created_at;
+    h.updated_at = hashResult.generatedMaps[0].updated_at;
+    result.hash = h;
+
+    // Document
+    const d = new Document1();
+    d.id = m.id;
+    d.message_id = m.id;
+    d.hash_id = h.id;
+    d.tg_id = document.id.toJSNumber();
+    d.tg_date = document.date;
+    d.tg_mime_type = document.mimeType;
+    d.tg_duration = attributeA?.duration ?? null;
+    d.tg_w = attributeA?.w ?? null;
+    d.tg_h = attributeA?.h ?? null;
+    d.tg_file_name = attributeB?.fileName ?? null;
+    await transactionEntityManager.save(d);
+    result.document = d;
+
+    // ProcessedStatus
+    const ps = new ProcessedStatus1();
+    ps.id = m.id;
+    ps.document_id = m.id;
+    ps.tg_sha256 = true;
+    ps.tg_sha256_date = new Date();
+    await transactionEntityManager.save(ps);
+    result.processedStatus = ps;
+  });
+  return result;
 };
 
 const saveMessages = async (channelId: number, messages: Api.Message[]): Promise<void> => {
@@ -88,20 +155,9 @@ const saveMessages = async (channelId: number, messages: Api.Message[]): Promise
   });
 };
 
-const logMessageUpdates = async (channelId: number, numAdded: number, tgMessageIds: number[]) => {
-  const logEntry = new MessageLog1();
-  const channel = new Channel1();
-  channel.id = channelId;
-  logEntry.channel_id = channelId
-  logEntry.number_added = numAdded;
-  logEntry.tg_message_ids = tgMessageIds;
-
-  return AppDataSource.manager.save(logEntry);
-};
-
 export default {
   getMessagesWithoutHashes,
   saveMessages,
-  logMessageUpdates,
+  saveMessageAndHash,
   getMessagesByDate,
 };

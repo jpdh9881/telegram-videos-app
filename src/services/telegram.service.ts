@@ -2,7 +2,7 @@ import { Api, TelegramClient } from "telegram";
 import { IterMessagesParams } from "telegram/client/messages";
 import { getFileInfo } from "telegram/Utils";
 import { StringSession } from "telegram/sessions";
-import { input } from "input";
+import input from "input";
 
 let CLIENT: TelegramClient = null;
 
@@ -22,7 +22,7 @@ const initTelegramClient = async (): Promise<void> => {
 
   // Start session
   await CLIENT.start({
-    phoneNumber: async () => await input.text("Please enter your number: "),
+    phoneNumber:async () => await input.text("Enter number: "),
     password: async () => await input.text("Please enter your password: "),
     phoneCode: async () =>
         await input.text("Please enter the code you received: "),

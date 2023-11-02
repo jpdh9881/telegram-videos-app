@@ -8,10 +8,12 @@ import { Message1 } from "./entity/Message1";
 import { Document1 } from "./entity/Document1";
 import { Hash1 } from "./entity/Hash1";
 import { ProcessedStatus1 } from "./entity/ProcessedStatus1";
-import { MessageLog1 } from "./entity/MessageLog1";
+import { JobLog1 } from "./entity/JobLog1";
 
 // Migrations
 import { AddChannels1697921775119 } from "./migration/1697921775119-add-channels";
+import { AddCronJobScrapeAndHashMessages1698630724913 } from "./migration/1698630724913-AddCronJob_scrapeAndHashMessages";
+import { Cron1 } from "./entity/Cron1";
 
 const config: DataSourceOptions = {
     type: "mysql",
@@ -22,8 +24,8 @@ const config: DataSourceOptions = {
     database: process.env.MYSQLDATABASE ?? "telegram-videos",
     synchronize: true,
     logging: false,
-    entities: [ Channel1, Message1, Document1, Hash1, ProcessedStatus1, MessageLog1 ],
-    migrations: [ AddChannels1697921775119 ],
+    entities: [ Channel1, Message1, Document1, Hash1, ProcessedStatus1, JobLog1, Cron1 ],
+    migrations: [ AddChannels1697921775119, AddCronJobScrapeAndHashMessages1698630724913 ],
     subscribers: [],
 };
 export const AppDataSource = new DataSource(config);

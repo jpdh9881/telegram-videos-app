@@ -2,7 +2,8 @@ import { Channel1 } from "../entity/Channel1";
 import { AppDataSource } from "../data-source";
 
 const getChannelIds = async (): Promise<Channel1[]> => {
-  return AppDataSource.manager.find(Channel1);
+  const channels = await AppDataSource.manager.find(Channel1);
+  return channels.filter(ch => ch.active);
 };
 
 export interface ChannelStats { id: number, name: string; last_tg_id: number; number_posts: number; }

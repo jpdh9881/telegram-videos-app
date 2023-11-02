@@ -15,42 +15,28 @@ const cliSwitch = argv[4] ?? "";
 AppDataSource.initialize().then(async () => {
   console.log(AppDataSource.isInitialized);
 
-  // Set up Telegram
-  // initialize the telegram client
-  await TelegramService.initTelegramClient();
-  const _tg: TelegramClient = TelegramService.getClient();
-  console.log("Telegram client initialized.");
+  if (process.env.ENV === "DEV") {
+    // Set up Telegram
+    // initialize the telegram client
+    await TelegramService.initTelegramClient();
+    const _tg: TelegramClient = TelegramService.getClient();
+    console.log("Telegram client initialized.");
 
-  switch(cliCommandAndOption) {
-    case "-routine hash": {
-      switch(cliSwitch) {
-        case "":
-        case "--tg_sha":
-          await JobService.populateMissingHashesTgSHA();
-          console.log("Done JobService.populateMissingHashesTgSHA(15000)");
-          break;
-        default: {
-          throw "Invalid switch for '-routine hash' command and option."
-        }
+    switch(cliCommandAndOption) {
+      case "-routine sync": {
+        // do nothing
+        break;
+      } case "-routine scrape-hash": {
+        const totalMessages = await JobService.scrapeAndHashMessages(false);
+        console.log(`JobService.scrapeAndHashMessages() - did ${totalMessages} messages`);
+        break;
+      } default: {
+        console.log("Invalid or no commands provided. Starting CRON jobs.");
+        const jobs = JobService.runCronJobs([
+          { func: JobService.scrapeAndHashMessages, cron: "0 * * * *"},
+        ]);
+        console.log("Started these jobs:", jobs);
       }
-      break;
-    } case "-routine scrape": {
-      switch(cliSwitch) {
-        case "":
-        case "--new":
-          await JobService.scrapeVideoMessages({ onlyNew: true });
-          console.log("Done JobService.scrapeVideoMessages({ onlyNew: true })");
-          break
-        case "--all":
-          await JobService.scrapeVideoMessages({ all: true });
-          console.log("Done JobService.scrapeVideoMessages({ all: true })");
-          break;
-        default:
-          throw "Invalid switch for '-routine scrape' command and option."
-      }
-      break;
-    } default: {
-      console.log("Invalid or no commands and options provided.")
     }
   }
 

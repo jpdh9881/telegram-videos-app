@@ -4,7 +4,7 @@ export class AddChannels1697921775119 implements MigrationInterface {
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(
-            `INSERT INTO channel1 (name, created_at, updated_at)
+            `INSERT IGNORE INTO channel1 (name, created_at, updated_at)
              VALUES
                 ('ab3army', 'CURRENT_TIMESTAMP()', 'CURRENT_TIMESTAMP()'),
                 ('adam1ua', 'CURRENT_TIMESTAMP()', 'CURRENT_TIMESTAMP()'),
