@@ -3,8 +3,8 @@ import { argv } from "node:process";
 import { AppDataSource } from "./data-source";
 import { initServer } from "./server/routes";
 import { TelegramClient } from "telegram";
-import TelegramService from "./services/telegram.service";
-import JobService from "./services/job.service";
+import _telegramService from "./services/telegram.service";
+import _jobService, { ScrapeAndHashMessagesJob } from "./services/job.service";
 
 // Determine commands
 //  e.g. node index.js -routine scrape
@@ -18,8 +18,8 @@ AppDataSource.initialize().then(async () => {
   if (process.env.ENV === "DEV") {
     // Set up Telegram
     // initialize the telegram client
-    await TelegramService.initTelegramClient();
-    const _tg: TelegramClient = TelegramService.getClient();
+    await _telegramService.initTelegramClient();
+    const _tg: TelegramClient = _telegramService.getClient();
     console.log("Telegram client initialized.");
 
     switch(cliCommandAndOption) {
@@ -27,13 +27,15 @@ AppDataSource.initialize().then(async () => {
         // do nothing
         break;
       } case "-routine scrape-hash": {
-        const totalMessages = await JobService.scrapeAndHashMessages(false);
-        console.log(`JobService.scrapeAndHashMessages() - did ${totalMessages} messages`);
+        const job = ScrapeAndHashMessagesJob.create();
+        const totalMessages = await job.start();
+        console.log(`_jobService.scrapeAndHashMessages() - did ${totalMessages} messages`);
         break;
       } default: {
         console.log("Invalid or no commands provided. Starting CRON jobs.");
-        const jobs = JobService.runCronJobs([
-          { func: JobService.scrapeAndHashMessages, cron: "0 * * * *"},
+        const scrapeAndHashJob = ScrapeAndHashMessagesJob.create("0 * * * *");
+        const jobs = _jobService.runCronJobs([
+          scrapeAndHashJob,
         ]);
         console.log("Started these jobs:", jobs);
       }

@@ -65,21 +65,21 @@ const createNewMessageLoggedAlert = (channelName: string, messageTgId: number, {
     message.add(":green_circle: ");
   }
   message.addCode(date.toUTCString() );
-  message.addAndEndLine(` <https://t.me/${channelName}/${messageTgId}>`);
+  message.addAndEndLine(`, <https://t.me/${channelName}/${messageTgId}>`);
 
   if (hashDupes.length > 0 || otherDupes.length > 0) {
     if (hashDupes.length > 0) {
       hashDupes.forEach(d => {
         message.add("\t:grey_exclamation: ");
         message.addCode(d.document_date.toUTCString())
-        message.add(` <${d.link}>`);
+        message.add(`, <${d.link}>`);
       });
     }
     if (otherDupes.length > 0) {
       otherDupes.forEach(d => {
         message.add("\t:grey_question: ");
         message.addCode(d.document_date.toUTCString())
-        message.add(` <${d.link}>`);
+        message.add(`, <${d.link}>`);
       });
     }
   }

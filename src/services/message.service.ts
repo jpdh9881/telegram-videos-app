@@ -3,7 +3,6 @@ import { AppDataSource } from "../data-source";
 import { Message1 } from "../entity/Message1";
 import { Document1 } from "../entity/Document1";
 import { ProcessedStatus1 } from "../entity/ProcessedStatus1";
-import { JobLog1 } from "../entity/JobLog1";
 import { Channel1 } from "../entity/Channel1";
 import { Hash1 } from "../entity/Hash1";
 
