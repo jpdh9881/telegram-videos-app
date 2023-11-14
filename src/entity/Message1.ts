@@ -18,7 +18,7 @@ export class Message1 {
     tg_message: string;
 
     @Column({ type: "json", nullable: false })
-    raw: string;
+    raw: Object;
 
     // Relations
     // @ManyToOne(() => Channel1, (channel) => channel.messages, { nullable: true })

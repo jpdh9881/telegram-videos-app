@@ -42,7 +42,7 @@ const sendDiscordNotification = async (message: string): Promise<void> => {
 
 export interface NewMessageLoggedAlertOptions { duplicates?: DuplicateVideos }
 const createNewMessageLoggedAlert = (channelName: string, messageTgId: number, { duplicates }: NewMessageLoggedAlertOptions) => {
-  const date = duplicates.byHash.filter(dupe => dupe.channel_name === channelName && dupe.message_tg_id === messageTgId)[0].document_date;
+  const date = duplicates.byHash.filter(dupe => dupe.channel_name === channelName && dupe.message_tg_id === messageTgId)[0]?.document_date;
   // Process duplicates
   //  - remove this message
   const hashDupes = duplicates.byHash.filter(dupe => dupe.channel_name !== channelName && dupe.message_tg_id !== messageTgId);
@@ -64,22 +64,22 @@ const createNewMessageLoggedAlert = (channelName: string, messageTgId: number, {
   } else {
     message.add(":green_circle: ");
   }
-  message.addCode(date.toUTCString() );
+  message.addCode(date?.toUTCString() );
   message.addAndEndLine(`, <https://t.me/${channelName}/${messageTgId}>`);
 
   if (hashDupes.length > 0 || otherDupes.length > 0) {
     if (hashDupes.length > 0) {
       hashDupes.forEach(d => {
         message.add("\t:grey_exclamation: ");
-        message.addCode(d.document_date.toUTCString())
-        message.add(`, <${d.link}>`);
+        message.addCode(d ? d.document_date.toUTCString() : "dunno")
+        message.addAndEndLine(`, <${d.link}>`);
       });
     }
     if (otherDupes.length > 0) {
       otherDupes.forEach(d => {
         message.add("\t:grey_question: ");
-        message.addCode(d.document_date.toUTCString())
-        message.add(`, <${d.link}>`);
+        message.addCode(d ? d.document_date.toUTCString() : "dunno")
+        message.addAndEndLine(`, <${d.link}>`);
       });
     }
   }

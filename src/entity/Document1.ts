@@ -6,13 +6,13 @@ export class Document1 {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ type: "bigint", nullable: false })
+    @Column({ type: "bigint", nullable: true })
     tg_id: number;
 
-    @Column({ type: "int", nullable: false })
+    @Column({ type: "int", nullable: true })
     tg_date: number;
 
-    @Column({ type: "varchar", length: 256 })
+    @Column({ type: "varchar", nullable: true, length: 256 })
     tg_mime_type: string;
 
     @Column({ type: "decimal", nullable: true })
@@ -42,6 +42,20 @@ export class Document1 {
 
     // @OneToOne(() => ProcessedStatus1, { nullable: true })
     // processedStatus: ProcessedStatus1;
+
+    /**
+     * in JSON from telegram: message.media.document.thumbs[]
+     * {
+     *    "type": "i",
+     *    "bytes": {
+     *      "type": "Buffer",
+     *      "data": [1, 23, 40, 197, 162, 138, 40, 0, 162, 138, 40, 0, 162, 138, 40, 1, 204, 0, 198, 8, 57, 25, 250, 83, 104, 162, 128, 10, 40, 162, 128, 10, 40, 162, 128, 63]
+     *    },
+     *    "className": "PhotoStrippedSize"
+     *  },
+     */
+    @Column({ type: "json", nullable: true })
+    tg_thumb_PhotoStrippedSize: number[];
 
     // Auditable
     @CreateDateColumn()

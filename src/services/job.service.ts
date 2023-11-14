@@ -29,7 +29,34 @@ const runCronJobs = (jobs: Job[]): CronJob[] => {
   return runningJobs;
 };
 
-export interface Job { id: string; cron: string; start(): any; } // also static create
+export interface Job { id: string; cron: string; start(): any; } // also static create() and static num
+
+export class BotStatusJob implements Job {
+  public static num = 0;
+  public readonly id = "botStatus";
+  public cron: string | undefined;
+
+  public static create(cron?: string) {
+    if (BotStatusJob.num === 0) {
+      BotStatusJob.num++;
+      return new BotStatusJob(cron);
+    }
+    throw "Already created that job!";
+  }
+
+  private constructor(cron?: string) {
+    if (cron) {
+      this.cron = cron;
+    }
+  }
+
+  public async start(): Promise<void> {
+    let message = new MessageBuilder();
+    message.add("(bot is running)");
+    await DiscordService.sendDiscordNotification(message.toString());
+  }
+}
+
 export class ScrapeAndHashMessagesJob implements Job {
   public static num = 0;
   public readonly id = "scrapeAndHashMessages";
@@ -66,7 +93,6 @@ export class ScrapeAndHashMessagesJob implements Job {
     const channels: Channel1[] = await _channelService.getChannelIds();
     const channelStats = await _channelService.getChannelStats();
 
-    let delayCount = 0;
     let totalMessages = 0;
     let error = null;
     try {
@@ -77,9 +103,15 @@ export class ScrapeAndHashMessagesJob implements Job {
         if (messages.length > 0) {
           let saved = 0;
           for (const message of messages) {
-            await delay(DELAY_TIME / 2, true);
-            const tgHash = await _telegramService.downloadTgHash(message);
-            const hashes = _hashService.joinTgHashes(tgHash);
+            await delay(DELAY_TIME, true);
+            let hashes;
+            try {
+              // TODO: document can not have a hash (MessageMediaUnsupported) -- don't know why
+              const tgHash = await _telegramService.downloadTgHash(message);
+              hashes = _hashService.joinTgHashes(tgHash);
+            } catch (e) {
+              hashes = null;
+            }
             const result = await _messageService.saveMessageAndHash(channel.id, message, hashes);
             const duplicates = await _duplicateService.getDuplicates(result.document, { hash: true, duration: true, fileName: true });
             DiscordService.createNewMessageLoggedAlert(channel.name, message.id, { duplicates });
@@ -89,11 +121,7 @@ export class ScrapeAndHashMessagesJob implements Job {
           console.log(`\tsaved ${saved} messages to db`);
         }
 
-        // should we delay to be nice to Telegram? (and hopefully not get FLOOD exceptioned)
-        if (delayCount % DELAY_OFFSET === 0) {
-          await delay(DELAY_TIME, true);
-        }
-        delayCount++;
+        await delay(DELAY_TIME, true);
       }
     } catch (e) {
       console.error(e);

@@ -5,6 +5,7 @@ import { initServer } from "./server/routes";
 import { TelegramClient } from "telegram";
 import _telegramService from "./services/telegram.service";
 import _jobService, { ScrapeAndHashMessagesJob } from "./services/job.service";
+import _discordService from "./services/discord.service";
 
 // Determine commands
 //  e.g. node index.js -routine scrape
@@ -33,10 +34,13 @@ AppDataSource.initialize().then(async () => {
         break;
       } default: {
         console.log("Invalid or no commands provided. Starting CRON jobs.");
-        const scrapeAndHashJob = ScrapeAndHashMessagesJob.create("0 * * * *");
+        const botStatus = ScrapeAndHashMessagesJob.create("0 * * * *");
+        const scrapeAndHashJob = ScrapeAndHashMessagesJob.create("0 */2 * * *");
         const jobs = _jobService.runCronJobs([
           scrapeAndHashJob,
+          botStatus,
         ]);
+        await _discordService.sendDiscordNotification("Bot has started.");
         console.log("Started these jobs:", jobs);
       }
     }
@@ -51,6 +55,7 @@ AppDataSource.initialize().then(async () => {
       host: "127.0.0.1",
     });
   } catch (err) {
+    await _discordService.sendDiscordNotification("Error: " + err);
     server.log.error(err);
     process.exit(1);
   }
