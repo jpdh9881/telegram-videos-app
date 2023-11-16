@@ -21,6 +21,9 @@ export class Channel1 {
     // @OneToMany(() => MessageLog1, (messageLog) => messageLog.channel)
     // messageLogs: MessageLog1[];
 
+    @Column({ type: "boolean", default: false })
+    aggregator: boolean;
+
     // Auditable
     @CreateDateColumn()
     created_at: Date;

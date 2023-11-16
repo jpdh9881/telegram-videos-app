@@ -60,18 +60,18 @@ const getVideoMessage = async (channel: string) => {
   });
 };
 
-export interface GetVideoMessagesOptions { channel: string; afterId?: number; }
-const getVideoMessages = async ({ channel, afterId }: GetVideoMessagesOptions) => {
+export interface GetVideoMessagesOptions { channel: string; afterId?: number; limit?: number }
+const getVideoMessages = async ({ channel, afterId, limit }: GetVideoMessagesOptions) => {
   const options: Partial<IterMessagesParams> = {
     filter: new Api.InputMessagesFilterVideo,
   };
-  if (afterId && afterId > 0) {
+  if (afterId && afterId >= 0) {
     options.reverse = true; // this is actually ASC!
     options.minId = afterId;
-    options.limit = undefined;
+    options.limit = limit;
   } else {
     options.reverse = true;  // this is actually ASC!
-    options.limit = undefined;
+    options.limit = limit;
   }
   return CLIENT.getMessages(channel, options);
 };

@@ -4,7 +4,7 @@ import { AppDataSource } from "./data-source";
 import { initServer } from "./server/routes";
 import { TelegramClient } from "telegram";
 import _telegramService from "./services/telegram.service";
-import _jobService, { ScrapeAndHashMessagesJob } from "./services/job.service";
+import _jobService, { ScrapeAndHashMessagesAggregatorsJob, ScrapeAndHashMessagesRegularJob } from "./services/job.service";
 import _discordService from "./services/discord.service";
 
 // Determine commands
@@ -28,16 +28,25 @@ AppDataSource.initialize().then(async () => {
         // do nothing
         break;
       } case "-routine scrape-hash": {
-        const job = ScrapeAndHashMessagesJob.create();
+        const job = ScrapeAndHashMessagesRegularJob.create();
         const totalMessages = await job.start();
-        console.log(`_jobService.scrapeAndHashMessages() - did ${totalMessages} messages`);
+        console.log(`ScrapeAndHashMessagesRegularJob - did ${totalMessages} messages`);
+        break;
+      } case "-routine scrape-hash-agg": {
+        _discordService.suppressNotifications();
+        const job = ScrapeAndHashMessagesAggregatorsJob.create();
+        const totalMessages = await job.start();
+        console.log(`ScrapeAndHashMessagesAggregatorsJob - did ${totalMessages} messages`);
+        _discordService.allowNotifications();
         break;
       } default: {
         console.log("Invalid or no commands provided. Starting CRON jobs.");
-        const botStatus = ScrapeAndHashMessagesJob.create("0 * * * *");
-        const scrapeAndHashJob = ScrapeAndHashMessagesJob.create("0 */2 * * *");
+        const botStatus = ScrapeAndHashMessagesRegularJob.create("0 * * * *");
+        const scrapeAndHashRegularJob = ScrapeAndHashMessagesRegularJob.create("0 */2 * * *");
+        const scrapeAndHashAggregatorsJob = ScrapeAndHashMessagesRegularJob.create("0 */2 * * *");
         const jobs = _jobService.runCronJobs([
-          scrapeAndHashJob,
+          scrapeAndHashRegularJob,
+          scrapeAndHashAggregatorsJob,
           botStatus,
         ]);
         await _discordService.sendDiscordNotification("Bot has started.");

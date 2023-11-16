@@ -29,11 +29,11 @@ const runCronJobs = (jobs: Job[]): CronJob[] => {
   return runningJobs;
 };
 
-export interface Job { id: string; cron: string; start(): any; } // also static create() and static num
+export interface Job { cron: string; start(): any; } // also static id, num, create()
 
 export class BotStatusJob implements Job {
   public static num = 0;
-  public readonly id = "botStatus";
+  public static readonly id = "botStatus";
   public cron: string | undefined;
 
   public static create(cron?: string) {
@@ -57,24 +57,9 @@ export class BotStatusJob implements Job {
   }
 }
 
-export class ScrapeAndHashMessagesJob implements Job {
-  public static num = 0;
-  public readonly id = "scrapeAndHashMessages";
+export abstract class ScrapeAndHashMessagesJob {
+  public readonly id: string;
   public cron: string | undefined;
-
-  public static create(cron?: string) {
-    if (ScrapeAndHashMessagesJob.num === 0) {
-      ScrapeAndHashMessagesJob.num++;
-      return new ScrapeAndHashMessagesJob(cron);
-    }
-    throw "Already created that job!";
-  }
-
-  private constructor(cron?: string) {
-    if (cron) {
-      this.cron = cron;
-    }
-  }
 
   public async start(): Promise<number> {
     // is this job active?
@@ -88,9 +73,18 @@ export class ScrapeAndHashMessagesJob implements Job {
     let message = new MessageBuilder();
     message.add("\n:watch:");
     message.addCode(startTime.toUTCString());
-    message.add(" - starting scrapeAndHash");
+    message.add(" - starting " + this.id);
     await DiscordService.sendDiscordNotification(message.toString());
-    const channels: Channel1[] = await _channelService.getChannelIds();
+    let channels: Channel1[];
+    let limit = undefined;
+    if (this instanceof ScrapeAndHashMessagesRegularJob) {
+      channels = await _channelService.getChannelIds({ onlyRegulars: true });
+    } else if (this instanceof ScrapeAndHashMessagesAggregatorsJob) {
+      limit = 10;
+      channels = await _channelService.getChannelIds({ onlyAggregators: true });
+    }
+
+    // TODO: filter by onlyRegulars or onlyAggregators as well
     const channelStats = await _channelService.getChannelStats();
 
     let totalMessages = 0;
@@ -98,7 +92,7 @@ export class ScrapeAndHashMessagesJob implements Job {
     try {
       for (const channel of channels) {
         const afterId = channelStats.find(c => c.name === channel.name)?.last_tg_id;
-        const messages = await _telegramService.getVideoMessages({ channel: channel.name, afterId });
+        const messages = await _telegramService.getVideoMessages({ channel: channel.name, afterId, limit });
         console.log(channel.name, "(id: " + channel.id + ")");
         if (messages.length > 0) {
           let saved = 0;
@@ -133,18 +127,60 @@ export class ScrapeAndHashMessagesJob implements Job {
         message.clear();
         message.add(":man_facepalming: ");
         message.addCode(endTime.toUTCString());
-        message.add(" errors scrapeAndHash WITH ERRORS (did " + totalMessages + " videos)");
+        message.add(` errors ${this.id} WITH ERRORS (did ${totalMessages} videos)`);
         await DiscordService.sendDiscordNotification(message.toString());
       } else {
         await closeJobLog(entryLog, totalMessages, true);
         message.clear();
         message.add(":white_check_mark: ");
         message.addCode(endTime.toUTCString());
-        message.add(" end scrapeAndHash (did " + totalMessages + " videos)");
+        message.add(` end ${this.id} (did ${totalMessages} videos)`);
         await DiscordService.sendDiscordNotification(message.toString());
       }
     }
     return totalMessages;
+  }
+}
+
+export class ScrapeAndHashMessagesRegularJob extends ScrapeAndHashMessagesJob {
+  public static num = 0;
+  public override readonly id = "ScrapeAndHashMessagesRegularJob";
+  public override cron: string | undefined;
+
+  public static create(cron?: string) {
+    if (ScrapeAndHashMessagesRegularJob.num === 0) {
+      ScrapeAndHashMessagesRegularJob.num++;
+      return new ScrapeAndHashMessagesRegularJob(cron);
+    }
+    throw "Already created that job!";
+  }
+
+  private constructor(cron?: string) {
+    super();
+    if (cron) {
+      this.cron = cron;
+    }
+  }
+}
+
+export class ScrapeAndHashMessagesAggregatorsJob extends ScrapeAndHashMessagesJob {
+  public static num = 0;
+  public override readonly id = "ScrapeAndHashMessagesAggregatorsJob";
+  public override cron: string | undefined;
+
+  public static create(cron?: string) {
+    if (ScrapeAndHashMessagesAggregatorsJob.num === 0) {
+      ScrapeAndHashMessagesAggregatorsJob.num++;
+      return new ScrapeAndHashMessagesAggregatorsJob(cron);
+    }
+    throw "Already created that job!";
+  }
+
+  private constructor(cron?: string) {
+    super();
+    if (cron) {
+      this.cron = cron;
+    }
   }
 }
 

@@ -5,7 +5,20 @@ import { delay } from "../utility/delay.utility";
 const MAX_CONTENT_SIZE = 2000; // from https://discord.com/developers/docs/resources/webhook
 const DELAY_TIME = 5000;
 
+let _suppressNotifications = false;
+const suppressNotifications = () => {
+  _suppressNotifications = true;
+};
+
+const allowNotifications = () => {
+  _suppressNotifications = false;
+};
+
 const sendDiscordNotification = async (message: string): Promise<void> => {
+  if (_suppressNotifications) {
+    console.log("(suppressed discord message)");
+    return;
+  }
   let messages = [];
   // Split into <= MAX_CONTENT_SIZE chunks
   while (message.length > MAX_CONTENT_SIZE) {
@@ -86,14 +99,6 @@ const createNewMessageLoggedAlert = (channelName: string, messageTgId: number, {
   return sendDiscordNotification(message.toString());
 };
 
-// Testing
-
-// const msg = "0123456789012345678901234\n5678901234567890123456789012345678901234567890123\n4567890123456789\n0123456789";
-// let msg_ = "";
-// for (let i = 0; i <125; i++) {
-//   msg_ += msg;
-// }
-// sendDiscordNotification(msg_);
 export class MessageBuilder {
   private message: string | undefined;
 
@@ -130,7 +135,19 @@ export class MessageBuilder {
   }
 }
 
+// Testing
+
+// const msg = "0123456789012345678901234\n5678901234567890123456789012345678901234567890123\n4567890123456789\n0123456789";
+// let msg_ = "";
+// for (let i = 0; i <125; i++) {
+//   msg_ += msg;
+// }
+// sendDiscordNotification(msg_);
+
 export default {
+  suppressNotifications,
+  allowNotifications,
+  _suppressNotifications,
   sendDiscordNotification,
   createNewMessageLoggedAlert,
 };

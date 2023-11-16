@@ -24,6 +24,7 @@
       "start": "ts-node src/index.ts",
       "typeorm": "typeorm-ts-node-esm",
       "scrape-hash": "ts-node src/index.ts -routine scrape-hash",
+      "scrape-hash-agg": "ts-node src/index.ts -routine scrape-hash-agg",
       "sync": "ts-node src/index.ts -routine sync",
       "migrate": "npx typeorm-ts-node-esm migration:run --dataSource './build/data-source.js'",
       "testfile": "ts-node src/test.ts"
