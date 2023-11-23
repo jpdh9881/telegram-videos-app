@@ -2,6 +2,7 @@ import { Api, TelegramClient } from "telegram";
 import { IterMessagesParams } from "telegram/client/messages";
 import { getFileInfo } from "telegram/Utils";
 import { StringSession } from "telegram/sessions";
+import _loggerService from "./logger.service";
 import input from "input";
 
 let CLIENT: TelegramClient = null;
@@ -26,9 +27,9 @@ const initTelegramClient = async (): Promise<void> => {
     password: async () => await input.text("Please enter your password: "),
     phoneCode: async () =>
         await input.text("Please enter the code you received: "),
-    onError: (err) => console.log(err),
+    onError: (err) => _loggerService.error(err.message + "\n" + err.stack),
   });
-  console.log("Connected to Telegram. Session string: " + CLIENT.session.save());
+  _loggerService.debug("Connected to Telegram. Session string: " + CLIENT.session.save());
   // return Promise.resolve();
 };
 

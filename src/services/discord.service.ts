@@ -1,5 +1,6 @@
 import axios from "axios";
 import { DuplicateVideos } from "./duplicate.service";
+import _loggerService from "./logger.service";
 import { delay } from "../utility/delay.utility";
 
 const MAX_CONTENT_SIZE = 2000; // from https://discord.com/developers/docs/resources/webhook
@@ -16,7 +17,7 @@ const allowNotifications = () => {
 
 const sendDiscordNotification = async (message: string): Promise<void> => {
   if (_suppressNotifications) {
-    console.log("(suppressed discord message)");
+    _loggerService.debug("(suppressed discord message)");
     return;
   }
   let messages = [];

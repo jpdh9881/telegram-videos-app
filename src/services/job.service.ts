@@ -3,18 +3,19 @@ import _telegramService from "./telegram.service";
 import _channelService from "./channel.service";
 import _messageService, { MessagesWithoutHashes } from "./message.service";
 import _hashService from "./hash.service";
-import ErrorService from "./processing-status.service";
-import { Channel1 } from "../entity/Channel1";
-import { delay } from "../utility/delay.utility";
 import _duplicateService from "./duplicate.service";
 import DiscordService, { MessageBuilder } from "./discord.service";
+import ErrorService from "./processing-status.service";
+import _loggerService from "./logger.service";
+import { Channel1 } from "../entity/Channel1";
+import { delay } from "../utility/delay.utility";
 import { AppDataSource } from "../data-source";
 import { JobLog1 } from "../entity/JobLog1";
 import { Cron1 } from "../entity/Cron1";
 import { CronJob } from "cron";
 
 const DELAY_OFFSET = 5; // do 5 at a time
-const DELAY_TIME = 10000;
+const DELAY_TIME = 13000;
 
 const runCronJobs = (jobs: Job[]): CronJob[] => {
   const runningJobs = [];
@@ -80,7 +81,7 @@ export abstract class ScrapeAndHashMessagesJob {
     if (this instanceof ScrapeAndHashMessagesRegularJob) {
       channels = await _channelService.getChannelIds({ onlyRegulars: true });
     } else if (this instanceof ScrapeAndHashMessagesAggregatorsJob) {
-      limit = 10;
+      // limit = 10;
       channels = await _channelService.getChannelIds({ onlyAggregators: true });
     }
 
@@ -93,7 +94,7 @@ export abstract class ScrapeAndHashMessagesJob {
       for (const channel of channels) {
         const afterId = channelStats.find(c => c.name === channel.name)?.last_tg_id;
         const messages = await _telegramService.getVideoMessages({ channel: channel.name, afterId, limit });
-        console.log(channel.name, "(id: " + channel.id + ")");
+        _loggerService.debug(channel.name + " (id: " + channel.id + ")");
         if (messages.length > 0) {
           let saved = 0;
           for (const message of messages) {
@@ -112,7 +113,7 @@ export abstract class ScrapeAndHashMessagesJob {
             totalMessages++;
             saved++;
           }
-          console.log(`\tsaved ${saved} messages to db`);
+          _loggerService.debug(`\tsaved ${saved} messages to db`);
         }
 
         await delay(DELAY_TIME, true);
@@ -212,13 +213,13 @@ const scrapeVideoMessages = async ({ all, onlyNew }: ScrapeAndSaveOptions): Prom
     }
 
     // get the messages
-    console.log(`${channel.name} - getting video messages, after id ${afterId}`);
+    _loggerService.debug(`${channel.name} - getting video messages, after id ${afterId}`);
     const messages = await _telegramService.getVideoMessages({ channel: channel.name, afterId });
-    console.log(`${channel.name} - got ${messages.length} video messages`);
+    _loggerService.debug(`${channel.name} - got ${messages.length} video messages`);
 
     if (messages.length > 0) {
       // save the messages
-      console.log(`${channel.name} - saving ${messages.length} messages to db`);
+      _loggerService.debug(`${channel.name} - saving ${messages.length} messages to db`);
       let saved = 0;
       while (messages.length > 0) {
         const messages_ = messages.splice(0, 50);
@@ -226,12 +227,12 @@ const scrapeVideoMessages = async ({ all, onlyNew }: ScrapeAndSaveOptions): Prom
         saved += messages_.length;
         totalMessages += messages_.length
       }
-      console.log(`${channel.name} - saved ${saved} messages to db`);
+      _loggerService.debug(`${channel.name} - saved ${saved} messages to db`);
     }
 
     // should we delay to be nice to Telegram? (and hopefully not get FLOOD exceptioned)
     if (delayCount % DELAY_OFFSET === 0) {
-      console.log("...taking a rest...");
+      _loggerService.debug("...taking a rest...");
       await delay(DELAY_TIME);
     }
     delayCount++;
@@ -247,7 +248,7 @@ const populateMissingHashesTgSHA = async() => {
   const entryLog = await startJobLog(ID);
 
   const missings: MessagesWithoutHashes[] = await _messageService.getMessagesWithoutHashes();
-  console.log("Need to get", missings.length, "hashes");
+  _loggerService.debug("Need to get " + missings.length + " hashes");
   // Get all channelIds
   const channelIds = Array.from(new Set(missings.map(m => m.channel_id)));
   const channelMap: Record<number, MessagesWithoutHashes[]> = {};
@@ -262,7 +263,7 @@ const populateMissingHashesTgSHA = async() => {
     const channelId = key;
     const channelName = value[0].channel_name;
 
-    console.log("Downloading: " + value.length, "| id:", channelId, channelName);
+    _loggerService.debug("Downloading: " + value.length + " | id: " + channelId + " " + channelName);
     try {
       // Files in Telegram are hashed according to 131072 byte chunks
       //  - write to db:
@@ -292,23 +293,23 @@ const populateMissingHashesTgSHA = async() => {
               counts[1]++;
             }
           } catch (e) {
-            console.log(e);
+            _loggerService.error(e);
             const missing = channelMap[channelId].find(ch => ch.message_tg_id === message.id);
             await ErrorService.saveProcessingError(missing.document_id, "unknown", e);
             counts[2]++;
           }
           // should we delay to be nice to Telegram? (and hopefully not get FLOOD exceptioned)
           if (delayCount % DELAY_OFFSET === 0) {
-            console.log("...taking a rest...");
+            _loggerService.debug("...taking a rest...");
             await delay(DELAY_TIME);
           }
           delayCount++;
           totalMessages++;
         }
-        console.log(`\tgot > ${counts[0]} new, ${counts[1]} dupes, ${counts[2]} errors = ${counts[0] + counts[1] + counts[2]}`);
+        _loggerService.debug(`\tgot > ${counts[0]} new, ${counts[1]} dupes, ${counts[2]} errors = ${counts[0] + counts[1] + counts[2]}`);
       }
     } catch (e) {
-      console.log("ERROR!", e);
+      _loggerService.error(e);
     }
   }
   await closeJobLog(entryLog, totalMessages, true);

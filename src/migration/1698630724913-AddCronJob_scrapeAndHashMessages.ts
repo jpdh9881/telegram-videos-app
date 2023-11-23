@@ -5,13 +5,13 @@ export class AddCronJobScrapeAndHashMessages1698630724913 implements MigrationIn
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(
             `INSERT INTO cron1 (job, \`on\`) VALUES
-                ('scrapeAndHashMessages', false);`
+                ('scrapeAndHashMessagesRegularJob', false);`
         );
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(
-            `DELETE FROM cron1 WHERE job = 'scrapeAndHashMessages';`
+            `DELETE FROM cron1 WHERE job = 'scrapeAndHashMessagesRegularJob';`
         );
     }
 
