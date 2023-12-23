@@ -18,6 +18,7 @@ import { AddAggregatorChannels1699993363826 } from "./migration/1699993363826-ad
 import { ChannelGroup1 } from "./entity/ChannelGroup1";
 import { NewChannelGroups1702607825546 } from "./migration/1702607825546-NewChannelGroups";
 import { NewChannels1702609846977 } from "./migration/1702609846977-NewChannels";
+import { NewChannelGroups3and41703356745503 } from "./migration/1703356745503-NewChannelGroups3and4";
 
 const config: DataSourceOptions = {
     type: "mysql",
@@ -35,6 +36,7 @@ const config: DataSourceOptions = {
         AddAggregatorChannels1699993363826,
         NewChannelGroups1702607825546,
         NewChannels1702609846977,
+        NewChannelGroups3and41703356745503,
     ],
     subscribers: [],
 };

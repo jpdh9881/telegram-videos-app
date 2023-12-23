@@ -1,4 +1,4 @@
-# Awesome Project Build with TypeORM
+# Telegram Video Scraper, for Ukraine Map Update
 
 Steps to run this project:
 
@@ -7,6 +7,15 @@ Steps to run this project:
 3. Run `npm start` command
 
 ## Log of Changes
+
+2023-12-23
+	- support for running multiple instances of app:
+		- changed telegram init code (requires separate set of telegram credentials per instance of app)
+		- addition of channel groups, so that can run multiple instances of app on different groups of channels
+		- made scrape-and-hash jobs just one job, w/ ability to define which channel groups to target
+	- support for two discord channels (for notifications)
+	- refined delays to minimize the flooding voodoo
+	- fixed "get missing hashes" job to deal with missing hashes
 
 2023-11-14
 	- better discord notifications

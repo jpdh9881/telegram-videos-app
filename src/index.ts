@@ -26,6 +26,7 @@ AppDataSource.initialize().then(async () => {
         // do nothing
         break;
       } case "-routine scrape-hash": {
+        throw "Not ready yet";
         // This job is for new channels (we need to catch up with all their posts)
         await _telegramService.initTelegramClient(2);
         _loggerService.debug("Telegram client initialized.");
@@ -55,7 +56,7 @@ AppDataSource.initialize().then(async () => {
         _loggerService.debug("Telegram client initialized.");
         _loggerService.debug("Invalid or no commands provided. Starting CRON jobs.");
         // https://superuser.com/questions/411406/set-a-cron-every-certain-hours-between-certain-hours
-        const scrapeAndHashJob = ScrapeAndHashMessagesJob.create("0 7,10,13,15,18,21,0 * * *", { groups: [ChannelGroups.Generation1], discordUpdates: true });
+        const scrapeAndHashJob = ScrapeAndHashMessagesJob.create("0 7,10,13,15,18,21,0 * * *", { groups: [ChannelGroups.Generation1, ChannelGroups.Generation2], discordUpdates: true });
         const crons = [
           scrapeAndHashJob,
           // botStatus,
