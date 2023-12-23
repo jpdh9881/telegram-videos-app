@@ -5,6 +5,10 @@ import { delay } from "../utility/delay.utility";
 
 const MAX_CONTENT_SIZE = 2000; // from https://discord.com/developers/docs/resources/webhook
 const DELAY_TIME = 5000;
+export enum PostType {
+  UPDATE,
+  DEBUG,
+}
 
 let _suppressNotifications = false;
 const suppressNotifications = () => {
@@ -15,7 +19,7 @@ const allowNotifications = () => {
   _suppressNotifications = false;
 };
 
-const sendDiscordNotification = async (message: string): Promise<void> => {
+const sendDiscordNotification = async (postType: PostType, message: string): Promise<void> => {
   if (_suppressNotifications) {
     _loggerService.debug("(suppressed discord message)");
     return;
@@ -39,7 +43,17 @@ const sendDiscordNotification = async (message: string): Promise<void> => {
   if (message.length > 0) {
     messages.push(message);
   }
-  const resource = process.env.DISCORD_WEBHOOK_URL ?? "";
+
+  let resource;
+  switch (postType) {
+    case PostType.UPDATE:
+      resource = process.env.DISCORD_WEBHOOK_URL;
+      break;
+    case PostType.DEBUG:
+    default:
+      resource = process.env.DISCORD_WEBHOOK_URL_DEBUG;
+      break;
+  }
   let after1stMessage = false;
   for (const message of messages) {
     // "(continued)" indicator message
@@ -55,7 +69,7 @@ const sendDiscordNotification = async (message: string): Promise<void> => {
 };
 
 export interface NewMessageLoggedAlertOptions { duplicates?: DuplicateVideos }
-const createNewMessageLoggedAlert = (channelName: string, messageTgId: number, { duplicates }: NewMessageLoggedAlertOptions) => {
+const createNewMessageLoggedAlert = (postType: PostType, channelName: string, messageTgId: number, { duplicates }: NewMessageLoggedAlertOptions) => {
   const date = duplicates.byHash.filter(dupe => dupe.channel_name === channelName && dupe.message_tg_id === messageTgId)[0]?.document_date;
   // Process duplicates
   //  - remove this message
@@ -97,7 +111,7 @@ const createNewMessageLoggedAlert = (channelName: string, messageTgId: number, {
       });
     }
   }
-  return sendDiscordNotification(message.toString());
+  return sendDiscordNotification(postType, message.toString());
 };
 
 export class MessageBuilder {

@@ -16,11 +16,17 @@ Steps to run this project:
 before 2023-11-03
 	- stuff
 
-## Running Migrations
+## Migrations
 
 ```
+go to ./src
+typeorm migration:create ./migration/MIGRATION_NAME
+```
+
+```
+go to root of project (../src)
 tsc
-npx typeorm-ts-node-esm migration:run --dataSource "./build/data-source.js"
+npm run migrate
 ```
 
 ## Queries

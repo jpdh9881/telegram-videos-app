@@ -1,21 +1,15 @@
-import { ChannelStats } from "./channel.service";
 import _telegramService from "./telegram.service";
 import _channelService from "./channel.service";
 import _messageService, { MessagesWithoutHashes } from "./message.service";
 import _hashService from "./hash.service";
 import _duplicateService from "./duplicate.service";
-import DiscordService, { MessageBuilder } from "./discord.service";
-import ErrorService from "./processing-status.service";
+import DiscordService, { MessageBuilder, PostType } from "./discord.service";
 import _loggerService from "./logger.service";
 import { Channel1 } from "../entity/Channel1";
 import { delay } from "../utility/delay.utility";
 import { AppDataSource } from "../data-source";
-import { JobLog1 } from "../entity/JobLog1";
 import { Cron1 } from "../entity/Cron1";
 import { CronJob } from "cron";
-
-const DELAY_OFFSET = 5; // do 5 at a time
-const DELAY_TIME = 13000;
 
 const runCronJobs = (jobs: Job[]): CronJob[] => {
   const runningJobs = [];
@@ -54,38 +48,55 @@ export class BotStatusJob implements Job {
   public async start(): Promise<void> {
     let message = new MessageBuilder();
     message.add("(bot is running)");
-    await DiscordService.sendDiscordNotification(message.toString());
+    await DiscordService.sendDiscordNotification(PostType.DEBUG, message.toString());
   }
 }
 
-export abstract class ScrapeAndHashMessagesJob {
-  public readonly id: string;
+interface ScrapeAndHashMessagesJobCreateOptions { groups: number[], discordUpdates?: boolean }
+export class ScrapeAndHashMessagesJob {
+  public static id = "ScrapeAndHashMessagesJob";
   public cron: string | undefined;
+  private DELAY_INTERVAL = 40000;
+
+  // special
+  private static createdJobs = [];
+  private groups: number[];
+  private discordUpdates = false;
+
+  public static create(cron: string | null, options: ScrapeAndHashMessagesJobCreateOptions) {
+    const { groups, discordUpdates } = options;
+    const thisJobSignature = ScrapeAndHashMessagesJob.id + groups.toString();
+    if (!ScrapeAndHashMessagesJob.createdJobs.includes(thisJobSignature)) {
+      ScrapeAndHashMessagesJob.createdJobs.push(thisJobSignature);
+      return new ScrapeAndHashMessagesJob(cron, groups, discordUpdates);
+    }
+    throw "Already created that job with that signature!";
+  }
+
+  private constructor(cron: string, groups: number[], discordUpdates: boolean) {
+    this.cron = cron;
+    this.groups = groups;
+    this.discordUpdates = discordUpdates ?? false;
+  }
 
   public async start(): Promise<number> {
     // is this job active?
     if (this.cron) {
-      const cron = await AppDataSource.manager.findOneBy(Cron1, { job: this.id });
+      const cron = await AppDataSource.manager.findOneBy(Cron1, { job: ScrapeAndHashMessagesJob.id });
       if (!cron.on) return null;
     }
 
-    const entryLog = await startJobLog(this.id);
     const startTime = new Date();
-    let message = new MessageBuilder();
-    message.add("\n:watch:");
-    message.addCode(startTime.toUTCString());
-    message.add(" - starting " + this.id);
-    await DiscordService.sendDiscordNotification(message.toString());
-    let channels: Channel1[];
-    let limit = undefined;
-    if (this instanceof ScrapeAndHashMessagesRegularJob) {
-      channels = await _channelService.getChannelIds({ onlyRegulars: true });
-    } else if (this instanceof ScrapeAndHashMessagesAggregatorsJob) {
-      // limit = 10;
-      channels = await _channelService.getChannelIds({ onlyAggregators: true });
+    if (this.discordUpdates) {
+      let message = new MessageBuilder();
+      message.add("\n:watch:");
+      message.addCode(startTime.toUTCString());
+      message.add(" - starting " + ScrapeAndHashMessagesJob.id);
+      await DiscordService.sendDiscordNotification(PostType.DEBUG, message.toString());
     }
+    let channels: Channel1[] = await _channelService.getChannelIds({ group: this.groups });
 
-    // TODO: filter by onlyRegulars or onlyAggregators as well
+    // TODO: filter by group
     const channelStats = await _channelService.getChannelStats();
 
     let totalMessages = 0;
@@ -93,251 +104,140 @@ export abstract class ScrapeAndHashMessagesJob {
     try {
       for (const channel of channels) {
         const afterId = channelStats.find(c => c.name === channel.name)?.last_tg_id;
-        const messages = await _telegramService.getVideoMessages({ channel: channel.name, afterId, limit });
+        const messages = await _telegramService.getVideoMessages({ channel: channel.name, afterId, limit: undefined });
+        await delay(this.DELAY_INTERVAL, true);
         _loggerService.debug(channel.name + " (id: " + channel.id + ")");
         if (messages.length > 0) {
           let saved = 0;
           for (const message of messages) {
-            await delay(DELAY_TIME, true);
             let hashes;
             try {
               // TODO: document can not have a hash (MessageMediaUnsupported) -- don't know why
               const tgHash = await _telegramService.downloadTgHash(message);
+              await delay(this.DELAY_INTERVAL, true);
+              _loggerService.debug("got the hash");
               hashes = _hashService.joinTgHashes(tgHash);
             } catch (e) {
+              _loggerService.debug("didn't get hash\n" + e);
+              await DiscordService.sendDiscordNotification(PostType.DEBUG, "(null hash issue)");
               hashes = null;
             }
             const result = await _messageService.saveMessageAndHash(channel.id, message, hashes);
             const duplicates = await _duplicateService.getDuplicates(result.document, { hash: true, duration: true, fileName: true });
-            DiscordService.createNewMessageLoggedAlert(channel.name, message.id, { duplicates });
+            _loggerService.debug(result.message.tg_id + "/ date: " + result.message.tg_date);
+            if (this.discordUpdates) {
+              DiscordService.createNewMessageLoggedAlert(PostType.UPDATE, channel.name, message.id, { duplicates });
+            }
             totalMessages++;
             saved++;
           }
           _loggerService.debug(`\tsaved ${saved} messages to db`);
         }
-
-        await delay(DELAY_TIME, true);
       }
     } catch (e) {
-      console.error(e);
+      _loggerService.error(e);
       error = e;
     } finally {
       const endTime = new Date();
       if (error) {
-        await closeJobLog(entryLog, totalMessages, true, error);
-        message.clear();
+        let message = new MessageBuilder();
         message.add(":man_facepalming: ");
         message.addCode(endTime.toUTCString());
-        message.add(` errors ${this.id} WITH ERRORS (did ${totalMessages} videos)`);
-        await DiscordService.sendDiscordNotification(message.toString());
+        message.add(` errors ${ScrapeAndHashMessagesJob.id} WITH ERRORS (did ${totalMessages} videos)`);
+        _loggerService.error(message.toString());
+        await DiscordService.sendDiscordNotification(PostType.DEBUG, message.toString());
       } else {
-        await closeJobLog(entryLog, totalMessages, true);
-        message.clear();
+        let message = new MessageBuilder();
         message.add(":white_check_mark: ");
         message.addCode(endTime.toUTCString());
-        message.add(` end ${this.id} (did ${totalMessages} videos)`);
-        await DiscordService.sendDiscordNotification(message.toString());
+        message.add(` end ${ScrapeAndHashMessagesJob.id} (did ${totalMessages} videos)`);
+        _loggerService.debug(message.toString());
+        await DiscordService.sendDiscordNotification(PostType.DEBUG, message.toString());
       }
     }
     return totalMessages;
   }
 }
 
-export class ScrapeAndHashMessagesRegularJob extends ScrapeAndHashMessagesJob {
+export class GetMissingHashesJob {
+  public readonly id = "GetMissingHashesJob";
+  private DELAY_INTERVAL = 30000;
   public static num = 0;
-  public override readonly id = "ScrapeAndHashMessagesRegularJob";
-  public override cron: string | undefined;
+  public cron: string | undefined;
 
   public static create(cron?: string) {
-    if (ScrapeAndHashMessagesRegularJob.num === 0) {
-      ScrapeAndHashMessagesRegularJob.num++;
-      return new ScrapeAndHashMessagesRegularJob(cron);
+    if (GetMissingHashesJob.num === 0) {
+      GetMissingHashesJob.num++;
+      return new GetMissingHashesJob(cron);
     }
     throw "Already created that job!";
   }
 
   private constructor(cron?: string) {
-    super();
     if (cron) {
       this.cron = cron;
     }
   }
-}
 
-export class ScrapeAndHashMessagesAggregatorsJob extends ScrapeAndHashMessagesJob {
-  public static num = 0;
-  public override readonly id = "ScrapeAndHashMessagesAggregatorsJob";
-  public override cron: string | undefined;
-
-  public static create(cron?: string) {
-    if (ScrapeAndHashMessagesAggregatorsJob.num === 0) {
-      ScrapeAndHashMessagesAggregatorsJob.num++;
-      return new ScrapeAndHashMessagesAggregatorsJob(cron);
-    }
-    throw "Already created that job!";
-  }
-
-  private constructor(cron?: string) {
-    super();
-    if (cron) {
-      this.cron = cron;
-    }
-  }
-}
-
-/**
- * Old / not used / in need of refactor
- */
-export interface ScrapeAndSaveOptions { all?: boolean; onlyNew?: boolean; }
-const scrapeVideoMessages = async ({ all, onlyNew }: ScrapeAndSaveOptions): Promise<void> => {
-  const ID = "scrapeVideoMessages";
-  const entryLog = await startJobLog(ID);
-  const channels: Channel1[] = await _channelService.getChannelIds();
-
-  let channelStats: ChannelStats[] | null;
-  if (all) {
-    channelStats = null;
-  } else if (onlyNew) {
-    channelStats = await _channelService.getChannelStats();
-  }
-
-  // get any missing messages
-  let delayCount = 0;
-  let totalMessages = 0;
-  for (const channel of channels) {
-    let afterId;
-    if (all) {
-      afterId = 0;
-    } else if (onlyNew) {
-      afterId = channelStats.find(c => c.name === channel.name)?.last_tg_id;
+  public async start(): Promise<number> {
+    const missings: MessagesWithoutHashes[] = await _messageService.getMessagesWithoutHashes();
+    const message = "Need to get " + missings.length + " hashes";
+    _loggerService.debug(message);
+    await DiscordService.sendDiscordNotification(PostType.DEBUG, message);
+    // Get all channelIds
+    const channelIds = Array.from(new Set(missings.map(m => m.channel_id)));
+    const channelMap: Record<number, MessagesWithoutHashes[]> = {};
+    for (const channelId of channelIds) {
+      channelMap[channelId] = missings.filter(m => m.channel_id === channelId);
     }
 
-    // get the messages
-    _loggerService.debug(`${channel.name} - getting video messages, after id ${afterId}`);
-    const messages = await _telegramService.getVideoMessages({ channel: channel.name, afterId });
-    _loggerService.debug(`${channel.name} - got ${messages.length} video messages`);
+    // One channel at a time
+    let totalMessages = 0;
+    for (const [key, value] of Object.entries(channelMap)) {
+      const channelId = key;
+      const channelName = value[0].channel_name;
 
-    if (messages.length > 0) {
-      // save the messages
-      _loggerService.debug(`${channel.name} - saving ${messages.length} messages to db`);
-      let saved = 0;
-      while (messages.length > 0) {
-        const messages_ = messages.splice(0, 50);
-        await _messageService.saveMessages(channel.id, messages_);
-        saved += messages_.length;
-        totalMessages += messages_.length
-      }
-      _loggerService.debug(`${channel.name} - saved ${saved} messages to db`);
-    }
+      _loggerService.debug("Downloading: " + value.length + " | id: " + channelId + " " + channelName);
+      try {
+        const tgIds = value.map(v => v.message_tg_id);
+        while (tgIds.length > 0) {
+          const subListOfTgIds = tgIds.splice(0, 50);
+          const messages = await _telegramService.getVideoMessagesByIds(channelName, subListOfTgIds);
+          await delay(this.DELAY_INTERVAL, true);
 
-    // should we delay to be nice to Telegram? (and hopefully not get FLOOD exceptioned)
-    if (delayCount % DELAY_OFFSET === 0) {
-      _loggerService.debug("...taking a rest...");
-      await delay(DELAY_TIME);
-    }
-    delayCount++;
-  }
-  await closeJobLog(entryLog, totalMessages, true);
-};
-
-/**
- * Old / not used / in need of refactor
- */
-const populateMissingHashesTgSHA = async() => {
-  const ID = "scrapeAndHashMessages";
-  const entryLog = await startJobLog(ID);
-
-  const missings: MessagesWithoutHashes[] = await _messageService.getMessagesWithoutHashes();
-  _loggerService.debug("Need to get " + missings.length + " hashes");
-  // Get all channelIds
-  const channelIds = Array.from(new Set(missings.map(m => m.channel_id)));
-  const channelMap: Record<number, MessagesWithoutHashes[]> = {};
-  for (const channelId of channelIds) {
-    channelMap[channelId] = missings.filter(m => m.channel_id === channelId);
-  }
-
-  // One channel at a time
-  let totalMessages = 0;
-  for (const [key, value] of Object.entries(channelMap)) {
-    let counts = [0, 0, 0]; // new, dupe, error
-    const channelId = key;
-    const channelName = value[0].channel_name;
-
-    _loggerService.debug("Downloading: " + value.length + " | id: " + channelId + " " + channelName);
-    try {
-      // Files in Telegram are hashed according to 131072 byte chunks
-      //  - write to db:
-      //    1. order these chunks according to their offset
-      //    2. convert the hash buffer to JSON
-      //    3. join with a ;
-      const tgIds = value.map(v => v.message_tg_id);
-
-      // Get 50 messages at a time
-      while (tgIds.length > 0) {
-        const subListOfTgIds = tgIds.splice(0, 50);
-        const messages = await _telegramService.getVideoMessagesByIds(channelName, subListOfTgIds);
-
-        // Get the hash for each message individually
-        let delayCount = 0;
-        for (const message of messages) {
-          try {
-            const tgHash = await _telegramService.downloadTgHash(message);
-            tgHash.sort((a, b) => a.offset.valueOf() - b.offset.valueOf());
-            const hashes = tgHash.map(hash => hash.hash.toJSON().data);
-            const joined = hashes.join(";");
-            const missing = channelMap[channelId].find(ch => ch.message_tg_id === message.id);
-            const isNewHash = await _hashService.saveHash(missing.document_id, joined.trim());
-            if (isNewHash) {
-              counts[0]++;
-            } else {
-              counts[1]++;
+          // Get the hash for each message individually
+          for (const message of messages) {
+            let hashes;
+            try {
+              // TODO: document can not have a hash (MessageMediaUnsupported) -- don't know why
+              const tgHash = await _telegramService.downloadTgHash(message);
+              await delay(this.DELAY_INTERVAL, true);
+              _loggerService.debug("got the hash");
+              hashes = _hashService.joinTgHashes(tgHash);
+            } catch (e) {
+              _loggerService.debug("null hash?\n" + e);
+              await DiscordService.sendDiscordNotification(PostType.DEBUG, "got an UNEXPECTED null hash");
+              hashes = null;
             }
-          } catch (e) {
-            _loggerService.error(e);
             const missing = channelMap[channelId].find(ch => ch.message_tg_id === message.id);
-            await ErrorService.saveProcessingError(missing.document_id, "unknown", e);
-            counts[2]++;
+            await _hashService.saveHash(missing.document_id, hashes.trim());
+            _loggerService.debug("Hash saved.");
+            totalMessages++;
           }
-          // should we delay to be nice to Telegram? (and hopefully not get FLOOD exceptioned)
-          if (delayCount % DELAY_OFFSET === 0) {
-            _loggerService.debug("...taking a rest...");
-            await delay(DELAY_TIME);
-          }
-          delayCount++;
-          totalMessages++;
         }
-        _loggerService.debug(`\tgot > ${counts[0]} new, ${counts[1]} dupes, ${counts[2]} errors = ${counts[0] + counts[1] + counts[2]}`);
+      } catch (e) {
+        _loggerService.error(e);
+        await DiscordService.sendDiscordNotification(PostType.DEBUG, "ERROR!\n" + e);
       }
-    } catch (e) {
-      _loggerService.error(e);
     }
+    _loggerService.error("Got " + totalMessages + " hashes");
+    await DiscordService.sendDiscordNotification(PostType.DEBUG, "Did " + totalMessages + " hashes");
+    return totalMessages;
   }
-  await closeJobLog(entryLog, totalMessages, true);
-};
-
-const startJobLog = async (job: string) => {
-  const logEntry = new JobLog1();
-  logEntry.job = job
-  return AppDataSource.manager.save(logEntry);
-};
-
-const closeJobLog = async (logEntry: JobLog1, numAdded: number, andHashes: boolean = false, error: unknown = null) => {
-  const now = new Date();
-  logEntry.number_messages = numAdded;
-  logEntry.and_hashes = andHashes;
-  logEntry.finished_at = logEntry.created_at > now ? logEntry.created_at : now;
-  logEntry.updated_at = logEntry.created_at > now ? logEntry.created_at : now;
-  if (error) {
-    logEntry.error = error;
-  }
-  return AppDataSource.manager.save(logEntry);
-};
+}
 
 export default {
   runCronJobs,
   ScrapeAndHashMessagesJob,
-  scrapeVideoMessages,
-  populateMissingHashesTgSHA,
-  startJobLog,
-  closeJobLog,
+  GetMissingHashesJob,
 };

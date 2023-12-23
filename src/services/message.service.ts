@@ -11,9 +11,9 @@ const getMessagesWithoutHashes = async (): Promise<MessagesWithoutHashes[]> => {
   return AppDataSource.getRepository(Message1).createQueryBuilder("message")
     .leftJoinAndSelect(Channel1, "channel", "channel.id = message.channel_id")
     .leftJoinAndSelect(Document1, "document", "document.message_id = message.id")
-    .leftJoin(ProcessedStatus1, "ps", "ps.document_id = document.id")
     .select([ "message.id", "message.tg_id", "document.id", "channel.id", "channel.name" ])
-    .where("ps.tg_sha256 = 0 and ps.tg_sha256_error IS NULL")
+    .where("document.hash_id IS NULL")
+    .take(1000)
     .getRawMany() as unknown as Promise<MessagesWithoutHashes[]>;
 };
 

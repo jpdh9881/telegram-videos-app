@@ -1,15 +1,15 @@
 import { Channel1 } from "../entity/Channel1";
 import { AppDataSource } from "../data-source";
 
-interface GetChannelIdsOptions { onlyRegulars?: boolean; onlyAggregators?: boolean; }
+interface GetChannelIdsOptions { group?: number[]; onlyAggregators?: boolean; }
 const getChannelIds = async (options?: GetChannelIdsOptions): Promise<Channel1[]> => {
-  const { onlyAggregators } = options;
+  const { group, onlyAggregators } = options;
   const channels = await AppDataSource.manager.find(Channel1);
 
   if (onlyAggregators) {
-    return channels.filter(ch => ch.active && ch.aggregator);
-  } else {
-    return channels.filter(ch => ch.active && !ch.aggregator);
+    return channels.filter(ch => ch.active && group.includes(ch.channel_group) && ch.aggregator);
+  } else if (group && group.length > 0) {
+    return channels.filter(ch => ch.active && group.includes(ch.channel_group) && !ch.aggregator);
   }
 };
 

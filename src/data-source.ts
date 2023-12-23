@@ -15,6 +15,9 @@ import { Cron1 } from "./entity/Cron1";
 import { AddChannels1697921775119 } from "./migration/1697921775119-add-channels";
 import { AddCronJobScrapeAndHashMessages1698630724913 } from "./migration/1698630724913-AddCronJob_scrapeAndHashMessages";
 import { AddAggregatorChannels1699993363826 } from "./migration/1699993363826-add-aggregator-channels";
+import { ChannelGroup1 } from "./entity/ChannelGroup1";
+import { NewChannelGroups1702607825546 } from "./migration/1702607825546-NewChannelGroups";
+import { NewChannels1702609846977 } from "./migration/1702609846977-NewChannels";
 
 const config: DataSourceOptions = {
     type: "mysql",
@@ -25,11 +28,13 @@ const config: DataSourceOptions = {
     database: process.env.MYSQLDATABASE ?? "telegram-videos",
     synchronize: true,
     logging: false,
-    entities: [ Channel1, Message1, Document1, Hash1, ProcessedStatus1, JobLog1, Cron1 ],
+    entities: [ Channel1, Message1, Document1, Hash1, ProcessedStatus1, JobLog1, Cron1, ChannelGroup1 ],
     migrations: [
         AddChannels1697921775119,
         AddCronJobScrapeAndHashMessages1698630724913,
         AddAggregatorChannels1699993363826,
+        NewChannelGroups1702607825546,
+        NewChannels1702609846977,
     ],
     subscribers: [],
 };

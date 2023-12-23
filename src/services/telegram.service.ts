@@ -11,10 +11,21 @@ const getClient = () => {
   return CLIENT;
 };
 
-const initTelegramClient = async (): Promise<void> => {
-  const apiId = Number.parseInt(process.env.API_ID ?? "");
-  const apiHash = process.env.API_HASH ?? "";
-  const stringSession = new StringSession(process.env.SESSION_STRING ?? ""); // empty string starts login process
+const initTelegramClient = async (instance: number): Promise<void> => {
+  let apiId, apiHash, stringSession;
+  switch (instance) {
+    case 1:
+      apiId = Number.parseInt(process.env.API_ID1 ?? "");
+      apiHash = process.env.API_HASH1 ?? "";
+      stringSession = new StringSession(process.env.SESSION_STRING1 ?? ""); // empty string starts login process
+      break;
+    case 2:
+      apiId = Number.parseInt(process.env.API_ID2 ?? "");
+      apiHash = process.env.API_HASH2 ?? "";
+      stringSession = new StringSession(process.env.SESSION_STRING2 ?? ""); // empty string starts login process
+    default:
+      break;
+  }
 
   // Init client
   CLIENT = new TelegramClient(stringSession, apiId, apiHash, {
