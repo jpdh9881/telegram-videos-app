@@ -13,6 +13,7 @@
       "dotenv": "^16.3.1",
       "fastify": "^4.24.3",
       "input": "^1.0.1",
+      "lodash": "^4.17.21",
       "log4js": "^6.9.1",
       "mysql": "^2.14.1",
       "node-fetch": "^3.3.2",
@@ -23,11 +24,10 @@
    "scripts": {
       "start": "ts-node src/index.ts",
       "typeorm": "typeorm-ts-node-esm",
-      "scrape-hash": "ts-node src/index.ts -routine scrape-hash",
-      "scrape-hash-agg": "ts-node src/index.ts -routine scrape-hash-agg",
-      "hash": "ts-node src/index.ts -routine just-hashes",
-      "sync": "ts-node src/index.ts -routine sync",
-      "migrate": "npx typeorm-ts-node-esm migration:run --dataSource './build/src/data-source.js'",
-      "testfile": "ts-node src/test.ts"
+      "scrape-hash": "ts-node src/index.ts -job scrape-hash",
+      "hash": "ts-node src/index.ts -job just-hashes",
+      "sync": "ts-node src/index.ts -job sync",
+      "crons": "ts-node src/index.ts -job crons",
+      "migrate": "npx typeorm-ts-node-esm migration:run --dataSource './build/src/data-source.js'"
    }
 }

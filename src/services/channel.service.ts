@@ -1,16 +1,12 @@
 import { Channel1 } from "../entity/Channel1";
 import { AppDataSource } from "../data-source";
+import { sortBy as __sortBy } from "lodash";
 
-interface GetChannelIdsOptions { group?: number[]; onlyAggregators?: boolean; }
+interface GetChannelIdsOptions { group?: number[] }
 const getChannelIds = async (options?: GetChannelIdsOptions): Promise<Channel1[]> => {
-  const { group, onlyAggregators } = options;
+  const { group } = options;
   const channels = await AppDataSource.manager.find(Channel1);
-
-  if (onlyAggregators) {
-    return channels.filter(ch => ch.active && group.includes(ch.channel_group) && ch.aggregator);
-  } else if (group && group.length > 0) {
-    return channels.filter(ch => ch.active && group.includes(ch.channel_group) && !ch.aggregator);
-  }
+  return __sortBy(channels.filter(ch => ch.active && group.includes(ch.channel_group)), ["name"]);
 };
 
 export interface ChannelStats { id: number, name: string; last_tg_id: number; number_posts: number; }
