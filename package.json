@@ -24,7 +24,8 @@
    "scripts": {
       "start": "ts-node src/index.ts",
       "typeorm": "typeorm-ts-node-esm",
-      "scrape-hash": "ts-node src/index.ts -job scrape-hash",
+      "scrape-hash1": "ts-node src/index.ts -job scrape-hash-1",
+      "scrape-hash2": "ts-node src/index.ts -job scrape-hash-2",
       "hash": "ts-node src/index.ts -job just-hashes",
       "sync": "ts-node src/index.ts -job sync",
       "crons": "ts-node src/index.ts -job crons",

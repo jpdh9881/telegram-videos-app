@@ -8,6 +8,15 @@ Steps to run this project:
 
 ## Log of Changes
 
+2024-01-01
+	- new channel sort order (by # of messages associated with each, ASC)
+	- new method of batching messages to avoid expired file references (get 25 messages and process them, then get 25 more messages... until finished with messages in that channel)
+	- changes logging:
+  	- more restrictive logging to Discord telegram channel
+  	- more detailed logging to Discord telegram_debug channel
+  	- better logging messages
+	- new channel group (5, TempCatchup) for channels that need history caught up
+
 2023-12-23
 	- support for running multiple instances of app:
 		- changed telegram init code (requires separate set of telegram credentials per instance of app)

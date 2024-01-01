@@ -35,7 +35,12 @@ const getDuplicates = async (document: Document1, { hash, duration, fileName }: 
       .from(Message1, "m")
       .innerJoin(Channel1, "ch", "ch.id = m.channel_id")
       .innerJoin(Document1, "d", "d.message_id = m.id")
-      .where("d.tg_file_name = :fileName", { fileName: document.tg_file_name })
+      /**
+       * Bug[Sat, 23 Dec 2023 19:43:32 GMT] - collation when using = comparison
+       *  - case to binary to avoid collation mismatch error
+       *  - I don't even know if this works properly!
+       */
+      .where("BINARY d.tg_file_name = BINARY :fileName", { fileName: document.tg_file_name })
       .execute();
     result.byFileName = response;
   }

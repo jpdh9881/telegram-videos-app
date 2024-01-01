@@ -2,11 +2,21 @@ import { Channel1 } from "../entity/Channel1";
 import { AppDataSource } from "../data-source";
 import { sortBy as __sortBy } from "lodash";
 
-interface GetChannelIdsOptions { group?: number[] }
+interface GetChannelIdsOptions { groups?: number[] }
 const getChannelIds = async (options?: GetChannelIdsOptions): Promise<Channel1[]> => {
-  const { group } = options;
-  const channels = await AppDataSource.manager.find(Channel1);
-  return __sortBy(channels.filter(ch => ch.active && group.includes(ch.channel_group)), ["name"]);
+  const { groups } = options;
+  // const channels = await AppDataSource.manager.find(Channel1);
+  // return __sortBy(channels.filter(ch => ch.active && group.includes(ch.channel_group)), ["name"]);
+  const queryText = `
+    SELECT ch.*, COUNT(m.channel_id) as count
+    FROM channel1 ch
+    INNER JOIN message1 m ON m.channel_id = ch.id
+    GROUP BY ch.id
+    ORDER BY count;
+  `;
+  let channels = await AppDataSource.manager.query(queryText) as Channel1[];
+  channels = channels.filter(ch => ch.active && groups.includes(ch.channel_group));
+  return channels;
 };
 
 export interface ChannelStats { id: number, name: string; last_tg_id: number; number_posts: number; }

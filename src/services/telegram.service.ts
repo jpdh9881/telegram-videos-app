@@ -23,6 +23,10 @@ const initTelegramClient = async (instance: number): Promise<void> => {
       apiId = Number.parseInt(process.env.API_ID2 ?? "");
       apiHash = process.env.API_HASH2 ?? "";
       stringSession = new StringSession(process.env.SESSION_STRING2 ?? ""); // empty string starts login process
+    case 3:
+        apiId = Number.parseInt(process.env.API_ID3 ?? "");
+        apiHash = process.env.API_HASH3 ?? "";
+        stringSession = new StringSession(process.env.SESSION_STRING3 ?? ""); // empty string starts login process
     default:
       break;
   }
@@ -88,6 +92,17 @@ const getVideoMessages = async ({ channel, afterId, limit }: GetVideoMessagesOpt
   return CLIENT.getMessages(channel, options);
 };
 
+async function* getVideoMessagesBatcher({ channel, afterId, limit }: GetVideoMessagesOptions) {
+  let afterId_ = afterId;
+  while (true) {
+    const messages = await getVideoMessages({ channel, afterId: afterId_, limit });
+    if (messages.length === 0) break;
+    afterId_ = messages[messages.length - 1].id;
+    yield messages;
+  }
+  // no more yields... done
+}
+
 const getVideoMessagesByIds = async (channelName: string, tgIds: number[]) => {
   return CLIENT.getMessages(channelName, { ids: tgIds });
 };
@@ -99,5 +114,6 @@ export default {
   downloadTgHash,
   getVideoMessage,
   getVideoMessages,
+  getVideoMessagesBatcher,
   getVideoMessagesByIds,
 };

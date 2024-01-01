@@ -78,7 +78,7 @@ const saveMessageAndHash = async (channelId: number, message: Api.Message, hashS
     }
 
     // Document
-    const document = media.document as Api.Document;
+    const document = media?.document as Api.Document;
     const d = new Document1();
     d.id = m.id;
     d.message_id = m.id;
