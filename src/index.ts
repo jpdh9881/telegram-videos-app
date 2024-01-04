@@ -31,7 +31,7 @@ AppDataSource.initialize().then(async () => {
           channelStatsJob,
         ];
         const jobs = _jobService.runCronJobs(crons);
-        await _discordService.sendDiscordNotification(PostType.DEBUG, `Cron Bot scheduling ${crons.length} jobs.`);
+        await _discordService.sendDiscordNotification(PostType.DEBUG, `Cron Bot scheduling ${crons.length} jobs: \`${crons.map(c => `${c.signature} (${c.cron})`)}\``);
         _loggerService.debug(`Executed ${crons.length} jobs.`);
         break;
       } case "-job sync": {
