@@ -7,55 +7,95 @@ import _discordService, { MessageBuilder, PostType } from "./discord.service";
 import _loggerService from "./logger.service";
 import { Channel1 } from "../entity/Channel1";
 import { delay } from "../utility/delay.utility";
+import { TIME_ZONE, toEST } from "../utility/datetime.utility";
 import { AppDataSource } from "../data-source";
 import { Cron1 } from "../entity/Cron1";
 import { CronJob } from "cron";
 import { TotalList } from "telegram/Helpers";
 import { Api } from "telegram";
+import { sortBy as __sortBy, maxBy as __maxBy } from "lodash";
 
+export interface Job { signature: string; cron: string; execute(): any; } // also static id, num, create()
 const runCronJobs = (jobs: Job[]): CronJob[] => {
   const runningJobs = [];
   for (const job of jobs) {
     runningJobs.push(CronJob.from({
       cronTime: job.cron,
-      onTick: () => job.start(),
+      onTick: () => job.execute(),
       start: true,
-      timeZone: "America/Toronto",
+      timeZone: TIME_ZONE,
     }));
   }
   return runningJobs;
 };
 
-export interface Job { cron: string; start(): any; } // also static id, num, create()
-
-export class BotStatusJob implements Job {
-  public static num = 0;
-  public static readonly id = "botStatus";
+export interface ChannelStatsJobCreateOptions { }
+export class ChannelStatsJob implements Job {
+  public static id = "ChannelStatsJob";
+  public static instantiated = false;
+  public signature: string;
   public cron: string | undefined;
 
-  public static create(cron?: string) {
-    if (BotStatusJob.num === 0) {
-      BotStatusJob.num++;
-      return new BotStatusJob(cron);
+  public static create(cron: string | null, options: ChannelStatsJobCreateOptions) {
+    const thisJobSignature = ChannelStatsJob.id;
+    if (!ChannelStatsJob.instantiated) {
+      ChannelStatsJob.instantiated = true;
+      const job = new ChannelStatsJob(cron);
+      job.signature = thisJobSignature;
+      return job;
     }
-    throw "Already created that job!";
+    throw "Already created that job with that signature!";
   }
 
-  private constructor(cron?: string) {
-    if (cron) {
-      this.cron = cron;
-    }
+  private constructor(cron: string) {
+    this.cron = cron;
   }
 
-  public async start(): Promise<void> {
-    let message = new MessageBuilder();
-    message.add("(bot is running)");
-    await _discordService.sendDiscordNotification(PostType.DEBUG, message.toString());
+  /**
+   * There is a lot of weird padding things. Sorry future Joseph.
+   */
+  public async execute(): Promise<void> {
+    const MAX_ID_LENGTH = 5;
+    const MAX_TG_ID_LENGTH = 5;
+    const MAX_NUMBER_POSTS_LENGTH = 5;
+    const MAX_DATE_LENGTH = 23;
+    const numberMap = [ ":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:" ];
+
+    let channelStats = await _channelService.getChannelStats();
+    const longestNameLength = (__maxBy(channelStats, (o) => o.name.length)).name.length;
+
+    channelStats = __sortBy(channelStats, (o) => o.number_posts).reverse();
+    const message = new MessageBuilder();
+    message.addAndEndLine("**Channel Statistics**");
+    let count = 1;
+    for (const stats of channelStats) {
+      message.add(count + ". ");
+      if (stats.aggregator) {
+        message.add(":diamond_shape_with_a_dot_inside:");
+      } else {
+        message.add(":small_blue_diamond:");
+      }
+      message.add(" " + numberMap[stats.channel_group]);
+      message.add(`${ stats.active ? " :green_square:" : " :red_square:"}`);
+      message.addCode(` ${stats.name.padEnd(longestNameLength, " ")} (${stats.id.toString()})`);
+      message.add(" / :tv::");
+      message.addCode(` ${stats.number_posts.toString().padStart(MAX_NUMBER_POSTS_LENGTH, " ")}`);
+      message.addAndEndLine();
+
+      if (stats.last_tg_date > 0) {
+        message.add("\t");
+        message.addCode(`Latest: ${toEST(stats.last_tg_date)} (id: ${stats.last_tg_id.toString().padStart(MAX_TG_ID_LENGTH, " ")})`);
+        message.addAndEndLine();
+      }
+      count++;
+    }
+    message.addAndEndLine("(done!)");
+    _discordService.sendDiscordNotification(PostType.DEBUG, message.toString());
   }
 }
 
 interface ScrapeAndHashMessagesJobCreateOptions { groups: number[], discordUpdates?: boolean }
-export class ScrapeAndHashMessagesJob {
+export class ScrapeAndHashMessagesJob implements Job {
   public static id = "ScrapeAndHashMessagesJob";
   public signature: string;
   public cron: string | undefined;
@@ -84,18 +124,18 @@ export class ScrapeAndHashMessagesJob {
     this.discordUpdates = discordUpdates ?? false;
   }
 
-  public async start(): Promise<number> {
+  public async execute(): Promise<number> {
     // is this job active?
     if (this.cron) {
       const cron = await AppDataSource.manager.findOneBy(Cron1, { job: ScrapeAndHashMessagesJob.id });
       if (!cron.on) return null;
     }
 
-    const startTime = new Date();
+    const executeTime = new Date();
     let message = new MessageBuilder();
     message.add("\n:watch:");
-    message.addCode(startTime.toUTCString());
-    message.add(" - starting " + this.signature);
+    message.addCode(executeTime.toUTCString());
+    message.add(" - executeing " + this.signature);
     await _discordService.sendDiscordNotification(PostType.DEBUG, message.toString());
     let channels: Channel1[] = await _channelService.getChannelIds({ groups: this.groups });
 
@@ -200,7 +240,7 @@ export class GetMissingHashesJob {
     }
   }
 
-  public async start(): Promise<number> {
+  public async execute(): Promise<number> {
     const missings: MessagesWithoutHashes[] = await _messageService.getMessagesWithoutHashes();
     const message = "Need to get " + missings.length + " hashes";
     _loggerService.debug(message);

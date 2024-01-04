@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { ChannelGroups } from "./ChannelGroup1";
 
 @Entity()
 export class Channel1 {
@@ -18,7 +19,7 @@ export class Channel1 {
     aggregator: boolean;
 
     @Column({ type: "int", nullable: false, default: 0 })
-    channel_group: number;
+    channel_group: ChannelGroups;
 
     // Auditable
     @CreateDateColumn()

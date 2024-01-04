@@ -11,7 +11,7 @@ export class ProcessedStatus1 {
     @Column({ type: "datetime", nullable: true })
     tg_sha256_date: Date;
 
-    @Column({ type: "json", nullable: true })
+    @Column({ type: "text", nullable: true })
     tg_sha256_error: Object;
 
     // Relations

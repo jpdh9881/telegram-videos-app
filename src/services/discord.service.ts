@@ -2,6 +2,7 @@ import axios from "axios";
 import { DuplicateVideos } from "./duplicate.service";
 import _loggerService from "./logger.service";
 import { delay } from "../utility/delay.utility";
+import { toEST } from "../utility/datetime.utility";
 
 const MAX_CONTENT_SIZE = 2000; // from https://discord.com/developers/docs/resources/webhook
 const DELAY_TIME = 5000;
@@ -92,21 +93,21 @@ const createNewMessageLoggedAlert = (postType: PostType, channelName: string, me
   } else {
     message.add(":green_circle: ");
   }
-  message.addCode(date?.toUTCString() );
+  message.addCode(date ? toEST(date) : "no date" );
   message.addAndEndLine(`, <https://t.me/${channelName}/${messageTgId}>`);
 
   if (hashDupes.length > 0 || otherDupes.length > 0) {
     if (hashDupes.length > 0) {
       hashDupes.forEach(d => {
         message.add("\t:grey_exclamation: ");
-        message.addCode(d ? d.document_date.toUTCString() : "dunno")
+        message.addCode(d ? toEST(d.document_date) : "no date")
         message.addAndEndLine(`, <${d.link}>`);
       });
     }
     if (otherDupes.length > 0) {
       otherDupes.forEach(d => {
         message.add("\t:grey_question: ");
-        message.addCode(d ? d.document_date.toUTCString() : "dunno")
+        message.addCode(d ? toEST(d.document_date) : "no date")
         message.addAndEndLine(`, <${d.link}>`);
       });
     }
@@ -125,8 +126,8 @@ export class MessageBuilder {
     this.message += str;
   }
 
-  public addAndEndLine(str: string) {
-    this.message += str + "\n";
+  public addAndEndLine(str?: string) {
+    this.message += (str ?? "") + "\n";
   }
 
   public addCode(str: string = "") {

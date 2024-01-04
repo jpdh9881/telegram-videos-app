@@ -8,6 +8,12 @@ Steps to run this project:
 
 ## Log of Changes
 
+2024-01-03
+	- adds to ChannelStats job and runs it in morning (helped me discover that I was missing a lot of channels!)
+	- converts times to EST
+	- fixes logic that was ignoring A LOT of channels (LEFT JOIN vs. INNER JOIN :'( )
+	- some refactoring
+
 2024-01-01
 	- new channel sort order (by # of messages associated with each, ASC)
 	- new method of batching messages to avoid expired file references (get 25 messages and process them, then get 25 more messages... until finished with messages in that channel)

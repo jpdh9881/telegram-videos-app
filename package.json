@@ -28,6 +28,8 @@
       "scrape-hash2": "ts-node src/index.ts -job scrape-hash-2",
       "hash": "ts-node src/index.ts -job just-hashes",
       "sync": "ts-node src/index.ts -job sync",
+      "test": "ts-node src/index.ts -job test",
+      "channel-stats": "ts-node src/index.ts -job channel-stats",
       "crons": "ts-node src/index.ts -job crons",
       "migrate": "npx typeorm-ts-node-esm migration:run --dataSource './build/src/data-source.js'"
    }
