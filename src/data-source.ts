@@ -27,7 +27,7 @@ const config: DataSourceOptions = {
     username: process.env.MYSQLUSER ?? "root",
     password: process.env.MYSQLPASSWORD ?? "",
     database: process.env.MYSQLDATABASE ?? "telegram-videos",
-    synchronize: true,
+    synchronize: false,
     logging: false,
     entities: [ Channel1, Message1, Document1, Hash1, ProcessedStatus1, JobLog1, Cron1, ChannelGroup1 ],
     migrations: [

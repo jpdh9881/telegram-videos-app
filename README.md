@@ -8,6 +8,15 @@ Steps to run this project:
 
 ## Log of Changes
 
+2024-01-05
+	- adds marshal: all instances/jobs now run as forked child processes
+	- separated logs: each instance gets its own log
+  	- made log messages more specific (since all instances' STDOUTs inherit parent's)
+	- better logging to discord
+	- added a fourth instance
+	- actually converts times to EST
+	- a telepathy service that made sense at one point and is really a step forward in human evolution but doesn't work
+
 2024-01-03
 	- adds to ChannelStats job and runs it in morning (helped me discover that I was missing a lot of channels!)
 	- converts times to EST

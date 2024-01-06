@@ -23,4 +23,5 @@ export enum ChannelGroups {
     Aggregators1 = 3,
     Aggregators2 = 4,
     TempCatchup = 5,
+    Generation2b = 6, // had to split up Generation2's channels to speed up the process
   }

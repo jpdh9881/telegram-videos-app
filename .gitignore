@@ -6,8 +6,8 @@ tmp/
 temp/
 scratch/
 
-application.log
-application.log*
+logs/
+log-*
 
 .env
 test.ts

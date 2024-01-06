@@ -3,7 +3,7 @@ import _channelService from "./channel.service";
 import _messageService, { MessagesWithoutHashes } from "./message.service";
 import _hashService from "./hash.service";
 import _duplicateService from "./duplicate.service";
-import _discordService, { MessageBuilder, PostType } from "./discord.service";
+import _discordService, { MessageBuilder, DiscordChannel } from "./discord.service";
 import _loggerService from "./logger.service";
 import { Channel1 } from "../entity/Channel1";
 import { delay } from "../utility/delay.utility";
@@ -90,7 +90,7 @@ export class ChannelStatsJob implements Job {
       count++;
     }
     message.addAndEndLine("(done!)");
-    _discordService.sendDiscordNotification(PostType.DEBUG, message.toString());
+    _discordService.sendDiscordNotification(DiscordChannel.DEBUG, message.toString(), true);
   }
 }
 
@@ -134,9 +134,9 @@ export class ScrapeAndHashMessagesJob implements Job {
     const executeTime = new Date();
     let message = new MessageBuilder();
     message.add("\n:watch:");
-    message.addCode(executeTime.toUTCString());
-    message.add(" - executeing " + this.signature);
-    await _discordService.sendDiscordNotification(PostType.DEBUG, message.toString());
+    message.addCode(toEST(executeTime));
+    message.add(" - executing " + this.signature);
+    await _discordService.sendDiscordNotification(DiscordChannel.DEBUG, message.toString());
     let channels: Channel1[] = await _channelService.getChannelIds({ groups: this.groups });
 
     // TODO: filter this query by group
@@ -160,7 +160,7 @@ export class ScrapeAndHashMessagesJob implements Job {
           const messages = next.value as TotalList<Api.Message>;
           const logMsg = `${channel.name}  (id: ${channel.id}) - ` + messages.map(m => m.id).toString();
           _loggerService.debug(this.signature + " - " + logMsg);
-          await _discordService.sendDiscordNotification(PostType.DEBUG, logMsg);
+          await _discordService.sendDiscordNotification(DiscordChannel.DEBUG, logMsg);
           if (messages.length > 0) {
             let saved = 0;
             for (const message of messages) {
@@ -173,7 +173,7 @@ export class ScrapeAndHashMessagesJob implements Job {
                 hashes = _hashService.joinTgHashes(tgHash);
               } catch (e) {
                 _loggerService.debug(this.signature + " - " + "didn't get hash\n" + e);
-                await _discordService.sendDiscordNotification(PostType.DEBUG, this.signature + " - " + "(null hash issue)");
+                await _discordService.sendDiscordNotification(DiscordChannel.DEBUG, this.signature + " - " + "(null hash issue)");
                 hashes = null;
               }
               const result = await _messageService.saveMessageAndHash(channel.id, message, hashes);
@@ -182,9 +182,9 @@ export class ScrapeAndHashMessagesJob implements Job {
               if (this.discordUpdates) {
                 if (duplicates.byHash.length === 1) {
                   // only post an update if this is a new video
-                  _discordService.createNewMessageLoggedAlert(PostType.UPDATE, channel.name, message.id, { duplicates });
+                  _discordService.createNewMessageLoggedAlert(DiscordChannel.UPDATE, channel.name, message.id, { duplicates });
                 } else {
-                  _discordService.createNewMessageLoggedAlert(PostType.DEBUG, channel.name, message.id, { duplicates });
+                  _discordService.createNewMessageLoggedAlert(DiscordChannel.DEBUG, channel.name, message.id, { duplicates });
                 }
               }
               totalMessages++;
@@ -202,18 +202,18 @@ export class ScrapeAndHashMessagesJob implements Job {
       if (error) {
         let message = new MessageBuilder();
         message.add(":man_facepalming: ");
-        message.addCode(endTime.toUTCString());
+        message.addCode(toEST(endTime));
         message.add(` errors ${ScrapeAndHashMessagesJob.id} WITH ERRORS (did ${totalMessages} videos)`);
         message.addLine(message.toString());
         _loggerService.error(message.toString());
-        await _discordService.sendDiscordNotification(PostType.DEBUG, this.signature + " - " + message.toString());
+        await _discordService.sendDiscordNotification(DiscordChannel.DEBUG, this.signature + " - " + message.toString());
       } else {
         let message = new MessageBuilder();
         message.add(":white_check_mark: ");
-        message.addCode(endTime.toUTCString());
+        message.addCode(toEST(endTime));
         message.add(` end ${ScrapeAndHashMessagesJob.id} (did ${totalMessages} videos)`);
         _loggerService.debug(message.toString());
-        await _discordService.sendDiscordNotification(PostType.DEBUG, this.signature + " - " + message.toString());
+        await _discordService.sendDiscordNotification(DiscordChannel.DEBUG, this.signature + " - " + message.toString());
       }
     }
     return totalMessages;
@@ -244,7 +244,7 @@ export class GetMissingHashesJob {
     const missings: MessagesWithoutHashes[] = await _messageService.getMessagesWithoutHashes();
     const message = "Need to get " + missings.length + " hashes";
     _loggerService.debug(message);
-    await _discordService.sendDiscordNotification(PostType.DEBUG, message);
+    await _discordService.sendDiscordNotification(DiscordChannel.DEBUG, message);
     // Get all channelIds
     const channelIds = Array.from(new Set(missings.map(m => m.channel_id)));
     const channelMap: Record<number, MessagesWithoutHashes[]> = {};
@@ -277,7 +277,7 @@ export class GetMissingHashesJob {
               hashes = _hashService.joinTgHashes(tgHash);
             } catch (e) {
               _loggerService.debug("null hash?\n" + e);
-              await _discordService.sendDiscordNotification(PostType.DEBUG, "got an UNEXPECTED null hash");
+              await _discordService.sendDiscordNotification(DiscordChannel.DEBUG, "got an UNEXPECTED null hash");
               hashes = null;
             }
             const missing = channelMap[channelId].find(ch => ch.message_tg_id === message.id);
@@ -288,11 +288,11 @@ export class GetMissingHashesJob {
         }
       } catch (e) {
         _loggerService.error(e);
-        await _discordService.sendDiscordNotification(PostType.DEBUG, "ERROR!\n" + e);
+        await _discordService.sendDiscordNotification(DiscordChannel.DEBUG, "ERROR!\n" + e);
       }
     }
     _loggerService.error("Got " + totalMessages + " hashes");
-    await _discordService.sendDiscordNotification(PostType.DEBUG, "Did " + totalMessages + " hashes");
+    await _discordService.sendDiscordNotification(DiscordChannel.DEBUG, "Did " + totalMessages + " hashes");
     return totalMessages;
   }
 }

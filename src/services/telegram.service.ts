@@ -11,23 +11,31 @@ const getClient = () => {
   return CLIENT;
 };
 
-const initTelegramClient = async (instance: number): Promise<void> => {
+const initTelegramClient = async (tgInstanceId: string): Promise<void> => {
   let apiId, apiHash, stringSession;
-  switch (instance) {
-    case 1:
+  switch (tgInstanceId) {
+    case "tg1":
       apiId = Number.parseInt(process.env.API_ID1 ?? "");
       apiHash = process.env.API_HASH1 ?? "";
       stringSession = new StringSession(process.env.SESSION_STRING1 ?? ""); // empty string starts login process
       break;
-    case 2:
+    case "tg2":
       apiId = Number.parseInt(process.env.API_ID2 ?? "");
       apiHash = process.env.API_HASH2 ?? "";
       stringSession = new StringSession(process.env.SESSION_STRING2 ?? ""); // empty string starts login process
-    case 3:
-        apiId = Number.parseInt(process.env.API_ID3 ?? "");
-        apiHash = process.env.API_HASH3 ?? "";
-        stringSession = new StringSession(process.env.SESSION_STRING3 ?? ""); // empty string starts login process
+      break;
+    case "tg3":
+      apiId = Number.parseInt(process.env.API_ID3 ?? "");
+      apiHash = process.env.API_HASH3 ?? "";
+      stringSession = new StringSession(process.env.SESSION_STRING3 ?? ""); // empty string starts login process
+      break;
+    case "tg4":
+      apiId = Number.parseInt(process.env.API_ID4 ?? "");
+      apiHash = process.env.API_HASH4 ?? "";
+      stringSession = new StringSession(process.env.SESSION_STRING4 ?? ""); // empty string starts login process
+      break;
     default:
+      throw `invalid instance (${tgInstanceId})`;
       break;
   }
 

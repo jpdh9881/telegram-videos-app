@@ -6,7 +6,7 @@ import { toEST } from "../utility/datetime.utility";
 
 const MAX_CONTENT_SIZE = 2000; // from https://discord.com/developers/docs/resources/webhook
 const DELAY_TIME = 5000;
-export enum PostType {
+export enum DiscordChannel {
   UPDATE,
   DEBUG,
 }
@@ -20,10 +20,13 @@ const allowNotifications = () => {
   _suppressNotifications = false;
 };
 
-const sendDiscordNotification = async (postType: PostType, message: string): Promise<void> => {
+const sendDiscordNotification = async (postType: DiscordChannel, message: string, suppressTgInstanceId: boolean = false): Promise<void> => {
   if (_suppressNotifications) {
     _loggerService.debug("(suppressed discord message)");
     return;
+  }
+  if (!suppressTgInstanceId) {
+    message = "(" + _loggerService.getTgInstanceId() + ") " + message;
   }
   let messages = [];
   // Split into <= MAX_CONTENT_SIZE chunks
@@ -47,10 +50,10 @@ const sendDiscordNotification = async (postType: PostType, message: string): Pro
 
   let resource;
   switch (postType) {
-    case PostType.UPDATE:
+    case DiscordChannel.UPDATE:
       resource = process.env.DISCORD_WEBHOOK_URL;
       break;
-    case PostType.DEBUG:
+    case DiscordChannel.DEBUG:
     default:
       resource = process.env.DISCORD_WEBHOOK_URL_DEBUG;
       break;
@@ -70,7 +73,7 @@ const sendDiscordNotification = async (postType: PostType, message: string): Pro
 };
 
 export interface NewMessageLoggedAlertOptions { duplicates?: DuplicateVideos }
-const createNewMessageLoggedAlert = (postType: PostType, channelName: string, messageTgId: number, { duplicates }: NewMessageLoggedAlertOptions) => {
+const createNewMessageLoggedAlert = (postType: DiscordChannel, channelName: string, messageTgId: number, { duplicates }: NewMessageLoggedAlertOptions) => {
   const date = duplicates.byHash.filter(dupe => dupe.channel_name === channelName && dupe.message_tg_id === messageTgId)[0]?.document_date;
   // Process duplicates
   //  - remove this message
@@ -112,7 +115,7 @@ const createNewMessageLoggedAlert = (postType: PostType, channelName: string, me
       });
     }
   }
-  return sendDiscordNotification(postType, message.toString());
+  return sendDiscordNotification(postType, message.toString(), true);
 };
 
 export class MessageBuilder {

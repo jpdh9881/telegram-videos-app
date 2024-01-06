@@ -22,15 +22,15 @@
       "typeorm": "0.3.17"
    },
    "scripts": {
-      "start": "ts-node src/index.ts",
-      "typeorm": "typeorm-ts-node-esm",
-      "scrape-hash1": "ts-node src/index.ts -job scrape-hash-1",
-      "scrape-hash2": "ts-node src/index.ts -job scrape-hash-2",
+      "marshal": "ts-node src/marshal.ts",
+      "crons": "ts-node src/index.ts -job crons --tg2",
+      "scrape-hash1": "ts-node src/index.ts -job scrape-hash-1 --tg3",
+      "scrape-hash2": "ts-node src/index.ts -job scrape-hash-2 --tg1",
+      "scrape-hash3": "ts-node src/index.ts -job scrape-hash-3 --tg4",
       "hash": "ts-node src/index.ts -job just-hashes",
       "sync": "ts-node src/index.ts -job sync",
       "test": "ts-node src/index.ts -job test",
       "channel-stats": "ts-node src/index.ts -job channel-stats",
-      "crons": "ts-node src/index.ts -job crons",
       "migrate": "npx typeorm-ts-node-esm migration:run --dataSource './build/src/data-source.js'"
    }
 }
